@@ -1,6 +1,7 @@
 #include <SFML/Graphics.hpp>
 #include <SFML/System/Clock.hpp>
 #include <vector>
+#include <memory>
 
 class MovableEntity {
 public:
@@ -177,9 +178,9 @@ public:
 
 class Game {
 public:
-    Game() : window(sf::VideoMode(1600, 1200), "Gayme") {
+    Game() : window(sf::VideoMode(800, 600), "Game"), camera(window.getDefaultView()) {
         // Set up any initial game variables or resources here
-        window.setFramerateLimit(144);
+        window.setFramerateLimit(60);
 
         // Create and add player entity
         player = std::make_shared<Player>(100.0f, 100.0f);
@@ -203,25 +204,33 @@ public:
 
 private:
     sf::RenderWindow window;
+    sf::View camera;
     std::shared_ptr<Player> player;
     std::vector<std::shared_ptr<MovableEntity>> entities;
 
     void processEvents() {
         sf::Event event;
         while (window.pollEvent(event)) {
-            if (event.type == sf::Event::Closed)
+            if (event.type == sf::Event::Closed) {
                 window.close();
+            }
         }
     }
 
     void update(float deltaTime) {
+        // Update all entities
         for (const auto& entity : entities) {
             entity->update(deltaTime, entities);
         }
-    }
 
-    void render() {
-        window.clear();
+        // Update the camera's position based on the player's position
+        camera.setCenter(player->getPosition());
+
+        // Set the camera view for rendering
+        window.setView(camera);
+    }
+    /* void render() { // normal rendering
+        window.clear(sf::Color::White);
         // Draw game objects here
         for (const auto& entity : entities) {
             sf::RectangleShape entityShape(sf::Vector2f(50.0f, 50.0f));
@@ -231,11 +240,40 @@ private:
         }
         window.display();
     }
+
+*/
+    void render() {
+        //window.clear();
+        window.clear(sf::Color::White);
+
+        // Render all entities within the camera view
+        for (const auto& entity : entities) {
+            if (isEntityInCameraView(entity)) {
+                // Render the entity within the camera view
+                sf::RectangleShape entityShape(sf::Vector2f(50.0f, 50.0f));
+                entityShape.setPosition(entity->getPosition());
+                if (dynamic_cast<Enemy*>(entity.get())) {
+                    entityShape.setFillColor(sf::Color::Red);
+                }
+                else {
+                    entityShape.setFillColor(sf::Color::Green);
+                }
+                window.draw(entityShape);
+            }
+        }
+
+        window.display();
+    }
+
+    bool isEntityInCameraView(const std::shared_ptr<MovableEntity>& entity) const {
+        sf::FloatRect entityBounds(entity->getPosition().x, entity->getPosition().y, 50.0f, 50.0f);
+        sf::FloatRect cameraBounds(camera.getCenter() - camera.getSize() / 2.0f, camera.getSize());
+        return cameraBounds.intersects(entityBounds);
+    }
 };
 
 int main() {
     Game game;
     game.run();
-
     return 0;
 }
