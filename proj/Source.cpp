@@ -85,9 +85,6 @@ protected:
     }
 
     void handleCollision(const std::shared_ptr<MovableEntity>& otherEntity) {
-        // Adjust the positions/velocities of the colliding entities to resolve the collision
-        // Here, we'll simply stop the current entity from moving in the collided direction
-
         sf::FloatRect thisBounds(position.x, position.y, 50.0f, 50.0f);
         sf::FloatRect otherBounds(otherEntity->position.x, otherEntity->position.y, 50.0f, 50.0f);
         sf::FloatRect intersection;
@@ -111,6 +108,7 @@ protected:
             if (position.y < otherEntity->position.y) {
                 // Collided from above
                 position.y = otherEntity->position.y - 50.0f;
+                velocity.y = 0.0f;
                 isJumping = false; // Reset jumping state
             }
             else {
@@ -178,9 +176,10 @@ public:
 
 class Game {
 public:
-    Game() : window(sf::VideoMode(800, 600), "Game"), camera(window.getDefaultView()) {
+    Game() : window(sf::VideoMode(1600, 1200), "Game"), view(sf::FloatRect(0, 0, 1600, 1200)) {
         // Set up any initial game variables or resources here
-        window.setFramerateLimit(60);
+        window.setFramerateLimit(144);
+        window.setView(view);
 
         // Create and add player entity
         player = std::make_shared<Player>(100.0f, 100.0f);
@@ -204,7 +203,7 @@ public:
 
 private:
     sf::RenderWindow window;
-    sf::View camera;
+    sf::View view;
     std::shared_ptr<Player> player;
     std::vector<std::shared_ptr<MovableEntity>> entities;
 
@@ -223,57 +222,38 @@ private:
             entity->update(deltaTime, entities);
         }
 
-        // Update the camera's position based on the player's position
-        camera.setCenter(player->getPosition());
-
-        // Set the camera view for rendering
-        window.setView(camera);
-    }
-    /* void render() { // normal rendering
-        window.clear(sf::Color::White);
-        // Draw game objects here
-        for (const auto& entity : entities) {
-            sf::RectangleShape entityShape(sf::Vector2f(50.0f, 50.0f));
-            entityShape.setPosition(entity->getPosition());
-            entityShape.setFillColor(sf::Color::Green);
-            window.draw(entityShape);
-        }
-        window.display();
+        // Update the camera position based on the player's position
+        view.setCenter(player->getPosition());
+        window.setView(view);
     }
 
-*/
     void render() {
-        //window.clear();
-        window.clear(sf::Color::White);
+        window.clear();
 
-        // Render all entities within the camera view
+        // Render all entities
         for (const auto& entity : entities) {
-            if (isEntityInCameraView(entity)) {
-                // Render the entity within the camera view
-                sf::RectangleShape entityShape(sf::Vector2f(50.0f, 50.0f));
-                entityShape.setPosition(entity->getPosition());
-                if (dynamic_cast<Enemy*>(entity.get())) {
-                    entityShape.setFillColor(sf::Color::Red);
-                }
-                else {
-                    entityShape.setFillColor(sf::Color::Green);
-                }
-                window.draw(entityShape);
-            }
+            renderEntity(entity);
         }
 
         window.display();
     }
 
-    bool isEntityInCameraView(const std::shared_ptr<MovableEntity>& entity) const {
-        sf::FloatRect entityBounds(entity->getPosition().x, entity->getPosition().y, 50.0f, 50.0f);
-        sf::FloatRect cameraBounds(camera.getCenter() - camera.getSize() / 2.0f, camera.getSize());
-        return cameraBounds.intersects(entityBounds);
+    void renderEntity(const std::shared_ptr<MovableEntity>& entity) {
+        sf::RectangleShape shape(sf::Vector2f(50.0f, 50.0f));
+        shape.setPosition(entity->getPosition());
+        if (entity == player) {
+            shape.setFillColor(sf::Color::Green);
+        }
+        else {
+            shape.setFillColor(sf::Color::Red);
+        }
+        window.draw(shape);
     }
 };
 
 int main() {
     Game game;
     game.run();
+
     return 0;
 }
