@@ -12,7 +12,6 @@ public:
         gravity(800.0f),
         movementSpeed(100.0f),
         isAlive(true) {
-
         // Set up any other properties or resources for the movable entity here
     }
 
@@ -41,6 +40,13 @@ public:
         }
 
         // Update any other entity-specific logic here
+        // Temporary bottom bounds
+        if (position.y > 1200.0f - 50.0f) {
+            // Adjust the position and velocity to prevent falling off the screen
+            position.y = 1200.0f - 50.0f;
+            velocity.y = 0.0f;
+            isJumping = false;
+        }
     }
 
     void moveLeft() {
@@ -171,7 +177,7 @@ public:
 
 class Game {
 public:
-    Game() : window(sf::VideoMode(1366, 768), "Gayme") {
+    Game() : window(sf::VideoMode(1600, 1200), "Gayme") {
         // Set up any initial game variables or resources here
         window.setFramerateLimit(144);
 
@@ -220,7 +226,7 @@ private:
         for (const auto& entity : entities) {
             sf::RectangleShape entityShape(sf::Vector2f(50.0f, 50.0f));
             entityShape.setPosition(entity->getPosition());
-            entityShape.setFillColor(sf::Color::Red);
+            entityShape.setFillColor(sf::Color::Green);
             window.draw(entityShape);
         }
         window.display();
