@@ -5,8 +5,8 @@
 
 // #define isn't working for some reason
 
-constexpr float WINDOW_WIDTH=1600.0f;
-constexpr float WINDOW_HEIGHT = 1200.0f;
+constexpr float WINDOW_WIDTH=1920.0f;
+constexpr float WINDOW_HEIGHT = 1080.0f;
 constexpr float MOVEMENT_SPEED = 250.0f;
 constexpr float GRAVITY = 800.0f;
 constexpr float JUMP_FORCE = 600.0f;
@@ -215,7 +215,7 @@ public:
         // Create and add player entity
         player = std::make_shared<Player>(100.0f, WINDOW_HEIGHT - 50.0f); // -50.0f because of current height of the player
         // Create and add enemy entities
-        spawnEnemies(2);
+        spawnEnemies(5);
         entities.push_back(player);
 
         // Calculate the initial camera center based on the bounding box of all entities
@@ -251,9 +251,9 @@ public:
     }
 
     void spawnEnemies(int numEnemies) {
-        float startX = 1500.0f; // Set the starting X position for the enemies
-        float startY = 100.0f; // Set the starting Y position for the enemies
-        float spacing = 60.0f; // Set the spacing between enemies
+        float startX = WINDOW_WIDTH - ENTITY_SIZE*2; // Set the starting X position for the enemies
+        float startY = ENTITY_SIZE; // Set the starting Y position for the enemies
+        float spacing = ENTITY_SIZE + 10; // Set the spacing between enemies
 
         for (int i = 0; i < numEnemies; ++i) {
             std::shared_ptr<Enemy> enemy = std::make_shared<Enemy>(startX, startY);
