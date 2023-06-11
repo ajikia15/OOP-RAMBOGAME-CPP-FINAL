@@ -10,23 +10,26 @@ public:
         isJumping(false),
         jumpForce(300.0f),
         gravity(800.0f),
-        movementSpeed(100.0f) {
+        movementSpeed(100.0f),
+        isAlive(true) {
 
         // Set up any other properties or resources for the movable entity here
     }
 
     virtual void update(float deltaTime, const std::vector<std::shared_ptr<MovableEntity>>& entities) {
+        if (!isAlive) {
+            // ...
+            return; // Skip the rest of the update logic for inactive entities
+        }
+
         // Apply gravity
         velocity.y += gravity * deltaTime;
 
         // Move the entity horizontally
         position.x += velocity.x * deltaTime;
 
-        // Move the entity vertically (if jumping)
-        if (isJumping) {
-            position.y += velocity.y * deltaTime;
-            velocity.y -= jumpForce * deltaTime;
-        }
+        // Move the entity vertically
+        position.y += velocity.y * deltaTime;
 
         // Check for collisions with other entities
         for (const auto& entity : entities) {
@@ -63,6 +66,7 @@ protected:
     sf::Vector2f position;
     sf::Vector2f velocity;
     bool isJumping;
+    bool isAlive;
     float jumpForce;
     float gravity;
     float movementSpeed;
@@ -167,7 +171,7 @@ public:
 
 class Game {
 public:
-    Game() : window(sf::VideoMode(800, 600), "Platformer Game") {
+    Game() : window(sf::VideoMode(1366, 768), "Gayme") {
         // Set up any initial game variables or resources here
         window.setFramerateLimit(144);
 
