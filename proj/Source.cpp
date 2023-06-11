@@ -1,7 +1,6 @@
 #include <SFML/Graphics.hpp>
 #include <SFML/System/Clock.hpp>
 #include <vector>
-#include <memory>
 
 class MovableEntity {
 public:
@@ -12,7 +11,8 @@ public:
         jumpForce(300.0f),
         gravity(800.0f),
         movementSpeed(100.0f),
-        isAlive(true) {
+        isAlive(true),
+        currentDirection(Direction::Right) {
         // Set up any other properties or resources for the movable entity here
     }
 
@@ -52,10 +52,12 @@ public:
 
     void moveLeft() {
         velocity.x = -movementSpeed;
+        currentDirection = Direction::Left;
     }
 
     void moveRight() {
         velocity.x = movementSpeed;
+        currentDirection = Direction::Right;
     }
 
     void jump() {
@@ -64,6 +66,11 @@ public:
             velocity.y = -jumpForce; // Instantly apply jump force
         }
     }
+
+    enum class Direction {
+        Left,
+        Right
+    };
 
     sf::Vector2f getPosition() const {
         return position;
@@ -77,7 +84,7 @@ protected:
     float jumpForce;
     float gravity;
     float movementSpeed;
-
+    Direction currentDirection;
     bool isIntersecting(const std::shared_ptr<MovableEntity>& otherEntity) const {
         sf::FloatRect thisBounds(position.x, position.y, 50.0f, 50.0f);
         sf::FloatRect otherBounds(otherEntity->position.x, otherEntity->position.y, 50.0f, 50.0f);
@@ -189,11 +196,23 @@ public:
         entities.push_back(enemy1);
         entities.push_back(enemy2);
         entities.push_back(player);
+
+        // Calculate the initial center of the entities
+        sf::Vector2f center(0.0f, 0.0f);
+        for (const auto& entity : entities) {
+            center += entity->getPosition();
+        }
+        center /= static_cast<float>(entities.size());
+
+        // Set the initial camera center
+        view.setCenter(center);
+        window.setView(view);
+        isRunning = true;
     }
 
     void run() {
         sf::Clock clock;
-        while (window.isOpen()) {
+        while (window.isOpen() && isRunning) {
             float deltaTime = clock.restart().asSeconds();
             processEvents();
             update(deltaTime);
@@ -203,17 +222,22 @@ public:
 
 private:
     sf::RenderWindow window;
-    sf::View view;
     std::shared_ptr<Player> player;
     std::vector<std::shared_ptr<MovableEntity>> entities;
-
+    sf::View view;
+    bool isRunning;
     void processEvents() {
         sf::Event event;
         while (window.pollEvent(event)) {
             if (event.type == sf::Event::Closed) {
                 window.close();
             }
+            else if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::X) {
+                isRunning = false; // Set the flag to stop the game loop
+                window.close(); // Close the window
+            }
         }
+
     }
 
     void update(float deltaTime) {
@@ -222,8 +246,16 @@ private:
             entity->update(deltaTime, entities);
         }
 
-        // Update the camera position based on the player's position
-        view.setCenter(player->getPosition());
+        // Update the camera position smoothly towards the center of the entities
+        sf::Vector2f center(0.0f, 0.0f);
+        for (const auto& entity : entities) {
+            center += entity->getPosition();
+        }
+        center /= static_cast<float>(entities.size());
+
+        sf::Vector2f currentCenter = view.getCenter();
+        sf::Vector2f newCenter = currentCenter + (center - currentCenter) * 0.05f;
+        view.setCenter(newCenter);
         window.setView(view);
     }
 
