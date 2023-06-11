@@ -359,6 +359,24 @@ private:
             centerY = playerPosition.y + (centerY - playerPosition.y) * 0.5f;
         }
 
+        // Keep the camera within the window bounds
+        float halfWidth = view.getSize().x / 2.0f;
+        float halfHeight = view.getSize().y / 2.0f;
+
+        if (centerX - halfWidth < 0.0f) {
+            centerX = halfWidth;
+        }
+        else if (centerX + halfWidth > WINDOW_WIDTH) {
+            centerX = WINDOW_WIDTH - halfWidth;
+        }
+
+        if (centerY - halfHeight < 0.0f) {
+            centerY = halfHeight;
+        }
+        else if (centerY + halfHeight > WINDOW_HEIGHT) {
+            centerY = WINDOW_HEIGHT - halfHeight;
+        }
+
         sf::Vector2f center(centerX, centerY);
 
         sf::Vector2f currentCenter = view.getCenter();
