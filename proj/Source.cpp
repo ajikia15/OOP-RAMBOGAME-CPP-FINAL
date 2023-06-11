@@ -52,7 +52,18 @@ public:
         }
 
         // Update any other entity-specific logic here
-        // Temporary bottom bounds
+        // Temporary BOUNDS
+        if (position.x < 0.0f) {
+            // Adjust the position and velocity to prevent going beyond the left boundary
+            position.x = 0.0f;
+            velocity.x = 0.0f;
+        }
+        else if (position.x > WINDOW_WIDTH - ENTITY_SIZE) {
+            // Adjust the position and velocity to prevent going beyond the right boundary
+            position.x = WINDOW_WIDTH - ENTITY_SIZE;
+            velocity.x = 0.0f;
+        }
+
         if (position.y > WINDOW_HEIGHT - ENTITY_SIZE) {
             // Adjust the position and velocity to prevent falling off the screen
             position.y = WINDOW_HEIGHT - ENTITY_SIZE;
@@ -213,6 +224,8 @@ public:
         float minY = std::numeric_limits<float>::max();
         float maxY = std::numeric_limits<float>::min();
 
+        initializeBorders();
+
         for (const auto& entity : entities) {
             const sf::Vector2f& position = entity->getPosition();
             if (position.x < minX) {
@@ -266,6 +279,9 @@ private:
     std::vector<std::shared_ptr<MovableEntity>> entities;
     sf::View view;
     bool isRunning;
+    sf::RectangleShape leftBorder;
+    sf::RectangleShape rightBorder;
+    sf::RectangleShape bottomBorder;
     void processEvents() {
         sf::Event event;
         while (window.pollEvent(event)) {
@@ -279,7 +295,23 @@ private:
         }
 
     }
+private:
+    void initializeBorders() {
+        // Initialize the left border
+        leftBorder.setSize(sf::Vector2f(10.0f, WINDOW_HEIGHT));
+        leftBorder.setFillColor(sf::Color::White);
+        leftBorder.setPosition(0.0f, 0.0f);
 
+        // Initialize the right border
+        rightBorder.setSize(sf::Vector2f(10.0f, WINDOW_HEIGHT));
+        rightBorder.setFillColor(sf::Color::White);
+        rightBorder.setPosition(WINDOW_WIDTH - 10.0f, 0.0f);
+
+        // Bottom border
+        bottomBorder.setSize(sf::Vector2f(WINDOW_WIDTH, 10.0f));
+        bottomBorder.setFillColor(sf::Color::White);
+        bottomBorder.setPosition(0.0f, WINDOW_HEIGHT - 10.0f);
+    }
     void update(float deltaTime) {
         // Update all entities
         for (const auto& entity : entities) {
@@ -337,6 +369,13 @@ private:
 
     void render() {
         window.clear();
+
+        // Draw borders
+        window.draw(leftBorder);
+
+        window.draw(rightBorder);
+
+        window.draw(bottomBorder);
 
         // Render all entities
         for (const auto& entity : entities) {
