@@ -1,7 +1,7 @@
 #include <SFML/Graphics.hpp>
 #include <SFML/System/Clock.hpp>
 #include <vector>
-
+#include <iostream>
 class MovableEntity {
 public:
     MovableEntity(float startX, float startY) :
@@ -12,7 +12,8 @@ public:
         gravity(800.0f),
         movementSpeed(100.0f),
         isAlive(true),
-        currentDirection(Direction::Right) {
+        currentDirection(Direction::Right)
+    {
         // Set up any other properties or resources for the movable entity here
     }
 
@@ -84,6 +85,7 @@ protected:
     float jumpForce;
     float gravity;
     float movementSpeed;
+
     Direction currentDirection;
     bool isIntersecting(const std::shared_ptr<MovableEntity>& otherEntity) const {
         sf::FloatRect thisBounds(position.x, position.y, 50.0f, 50.0f);
@@ -182,6 +184,7 @@ public:
 };
 
 class Game {
+
 public:
     Game() : window(sf::VideoMode(1600, 1200), "Game"), view(sf::FloatRect(0, 0, 1600, 1200)) {
         // Set up any initial game variables or resources here
