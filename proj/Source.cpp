@@ -2,15 +2,25 @@
 #include <SFML/System/Clock.hpp>
 #include <vector>
 #include <iostream>
+
+// #define isn't working for some reason
+
+constexpr float WINDOW_WIDTH=1600.0f;
+constexpr float WINDOW_HEIGHT = 1200.0f;
+constexpr float MOVEMENT_SPEED = 250.0f;
+constexpr float GRAVITY = 800.0f;
+constexpr float JUMP_FORCE = 600.0f;
+constexpr float ENTITY_SIZE = 50.0f;
+constexpr int FPS = 144;
 class MovableEntity {
 public:
     MovableEntity(float startX, float startY) :
         position(startX, startY),
         velocity(0.0f, 0.0f),
         isJumping(false),
-        jumpForce(300.0f),
-        gravity(800.0f),
-        movementSpeed(100.0f),
+        jumpForce(JUMP_FORCE),
+        gravity(GRAVITY),
+        movementSpeed(MOVEMENT_SPEED),
         isAlive(true),
         currentDirection(Direction::Right)
     {
@@ -43,9 +53,9 @@ public:
 
         // Update any other entity-specific logic here
         // Temporary bottom bounds
-        if (position.y > 1200.0f - 50.0f) {
+        if (position.y > WINDOW_HEIGHT - ENTITY_SIZE) {
             // Adjust the position and velocity to prevent falling off the screen
-            position.y = 1200.0f - 50.0f;
+            position.y = WINDOW_HEIGHT - ENTITY_SIZE;
             velocity.y = 0.0f;
             isJumping = false;
         }
@@ -186,31 +196,58 @@ public:
 class Game {
 
 public:
-    Game() : window(sf::VideoMode(1600, 1200), "Game"), view(sf::FloatRect(0, 0, 1600, 1200)) {
+    Game() : window(sf::VideoMode(WINDOW_WIDTH, WINDOW_HEIGHT), "Game"), view(sf::FloatRect(0, 0, WINDOW_WIDTH/1.5, WINDOW_HEIGHT/1.5)) {
         // Set up any initial game variables or resources here
-        window.setFramerateLimit(144);
+        window.setFramerateLimit(FPS);
         window.setView(view);
 
         // Create and add player entity
-        player = std::make_shared<Player>(100.0f, 100.0f);
+        player = std::make_shared<Player>(100.0f, WINDOW_HEIGHT - 50.0f); // -50.0f because of current height of the player
         // Create and add enemy entities
-        std::shared_ptr<Enemy> enemy1 = std::make_shared<Enemy>(300.0f, 200.0f);
-        std::shared_ptr<Enemy> enemy2 = std::make_shared<Enemy>(500.0f, 300.0f);
-        entities.push_back(enemy1);
-        entities.push_back(enemy2);
+        spawnEnemies(2);
         entities.push_back(player);
 
-        // Calculate the initial center of the entities
-        sf::Vector2f center(0.0f, 0.0f);
+        // Calculate the initial camera center based on the bounding box of all entities
+        float minX = std::numeric_limits<float>::max();
+        float maxX = std::numeric_limits<float>::min();
+        float minY = std::numeric_limits<float>::max();
+        float maxY = std::numeric_limits<float>::min();
+
         for (const auto& entity : entities) {
-            center += entity->getPosition();
+            const sf::Vector2f& position = entity->getPosition();
+            if (position.x < minX) {
+                minX = position.x;
+            }
+            if (position.x > maxX) {
+                maxX = position.x;
+            }
+            if (position.y < minY) {
+                minY = position.y;
+            }
+            if (position.y > maxY) {
+                maxY = position.y;
+            }
         }
-        center /= static_cast<float>(entities.size());
+
+        sf::Vector2f center((minX + maxX) / 2.0f, (minY + maxY) / 2.0f);
 
         // Set the initial camera center
         view.setCenter(center);
         window.setView(view);
         isRunning = true;
+    }
+
+    void spawnEnemies(int numEnemies) {
+        float startX = 1500.0f; // Set the starting X position for the enemies
+        float startY = 100.0f; // Set the starting Y position for the enemies
+        float spacing = 60.0f; // Set the spacing between enemies
+
+        for (int i = 0; i < numEnemies; ++i) {
+            std::shared_ptr<Enemy> enemy = std::make_shared<Enemy>(startX, startY);
+            entities.push_back(enemy);
+
+            startX -= spacing; // Update the X position for the next enemy
+        }
     }
 
     void run() {
@@ -249,12 +286,48 @@ private:
             entity->update(deltaTime, entities);
         }
 
-        // Update the camera position smoothly towards the center of the entities
-        sf::Vector2f center(0.0f, 0.0f);
+        // Calculate the bounding box of all entities
+        float minX = std::numeric_limits<float>::max();
+        float maxX = std::numeric_limits<float>::min();
+        float minY = std::numeric_limits<float>::max();
+        float maxY = std::numeric_limits<float>::min();
+
         for (const auto& entity : entities) {
-            center += entity->getPosition();
+            const sf::Vector2f& position = entity->getPosition();
+            if (position.x < minX) {
+                minX = position.x;
+            }
+            if (position.x > maxX) {
+                maxX = position.x;
+            }
+            if (position.y < minY) {
+                minY = position.y;
+            }
+            if (position.y > maxY) {
+                maxY = position.y;
+            }
         }
-        center /= static_cast<float>(entities.size());
+
+        // Calculate the player's position
+        sf::Vector2f playerPosition = player->getPosition();
+
+        // Calculate the camera center based on the bounding box and player's position
+        float centerX = (minX + maxX) / 2.0f;
+        float centerY = (minY + maxY) / 2.0f;
+
+        // Calculate the distance between the camera center and player's position
+        float distanceX = std::abs(centerX - playerPosition.x);
+        float distanceY = std::abs(centerY - playerPosition.y);
+
+        // Adjust the camera center based on the distance between entities and player
+        if (distanceX > 400.0f) {
+            centerX = playerPosition.x + (centerX - playerPosition.x) * 0.5f;
+        }
+        if (distanceY > 300.0f) {
+            centerY = playerPosition.y + (centerY - playerPosition.y) * 0.5f;
+        }
+
+        sf::Vector2f center(centerX, centerY);
 
         sf::Vector2f currentCenter = view.getCenter();
         sf::Vector2f newCenter = currentCenter + (center - currentCenter) * 0.05f;
@@ -276,14 +349,17 @@ private:
     void renderEntity(const std::shared_ptr<MovableEntity>& entity) {
         sf::RectangleShape shape(sf::Vector2f(50.0f, 50.0f));
         shape.setPosition(entity->getPosition());
-        if (entity == player) {
+
+        if (std::dynamic_pointer_cast<Player>(entity) != nullptr) {
             shape.setFillColor(sf::Color::Green);
         }
         else {
             shape.setFillColor(sf::Color::Red);
         }
+
         window.draw(shape);
     }
+
 };
 
 int main() {
