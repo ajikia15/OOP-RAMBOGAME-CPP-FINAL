@@ -11,10 +11,11 @@ constexpr float MOVEMENT_SPEED = 250.0f;
 constexpr float GRAVITY = 800.0f;
 constexpr float JUMP_FORCE = 600.0f;
 constexpr float ENTITY_SIZE = 50.0f;
+constexpr float PROJECTILE_SPEED = 50.0f;
 constexpr int FPS = 144;
 class MovableEntity {
 public:
-    MovableEntity(float startX, float startY) :
+    MovableEntity(float startX, float startY, int startHealth) :
         position(startX, startY),
         velocity(0.0f, 0.0f),
         isJumping(false),
@@ -22,7 +23,8 @@ public:
         gravity(GRAVITY),
         movementSpeed(MOVEMENT_SPEED),
         isAlive(true),
-        currentDirection(Direction::Right)
+        currentDirection(Direction::Right),
+        health(startHealth)
     {
         // Set up any other properties or resources for the movable entity here
     }
@@ -106,7 +108,7 @@ protected:
     float jumpForce;
     float gravity;
     float movementSpeed;
-
+    int health;
     Direction currentDirection;
     bool isIntersecting(const std::shared_ptr<MovableEntity>& otherEntity) const {
         sf::FloatRect thisBounds(position.x, position.y, 50.0f, 50.0f);
@@ -152,7 +154,7 @@ protected:
 
 class Player : public MovableEntity {
 public:
-    Player(float startX, float startY) : MovableEntity(startX, startY) {
+    Player(float startX, float startY) : MovableEntity(startX, startY, 5) {
         // Set up any other properties or resources specific to the player here
     }
 
@@ -184,25 +186,52 @@ private:
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space)) {
             jump();
         }
+
+
     }
 };
 
 class Enemy : public MovableEntity {
 public:
-    Enemy(float startX, float startY) : MovableEntity(startX, startY) {
+    Enemy(float startX, float startY) : MovableEntity(startX, startY, 1) {
         // Set up any other properties or resources specific to the enemy here
     }
 
     void update(float deltaTime, const std::vector<std::shared_ptr<MovableEntity>>& entities) {
-        // Update the enemy's movement and behavior here
-        // For example, you could make it move in a specific pattern or track the player
-
         // Call the base class update function to handle movement and physics
+
+        // Find the player entity
+        std::shared_ptr<Player> player = nullptr;
+        for (const auto& entity : entities) {
+            if (std::dynamic_pointer_cast<Player>(entity) != nullptr) {
+                player = std::dynamic_pointer_cast<Player>(entity);
+                break;
+            }
+        }
+
+        // If the player entity is found, move towards it
+        if (player != nullptr) {
+            sf::Vector2f playerPosition = player->getPosition();
+
+            // Move towards the player horizontally
+            if (playerPosition.x < position.x) {
+                moveLeft();
+            }
+            else if (playerPosition.x > position.x) {
+                moveRight();
+            }
+
+            // Jump if the player is above the enemy
+            //if (playerPosition.y < position.y) {
+            //    jump();
+            //}
+        }
         MovableEntity::update(deltaTime, entities);
 
         // Add any other enemy-specific logic here
     }
 };
+
 
 class Game {
 
@@ -215,7 +244,7 @@ public:
         // Create and add player entity
         player = std::make_shared<Player>(100.0f, WINDOW_HEIGHT - 50.0f); // -50.0f because of current height of the player
         // Create and add enemy entities
-        spawnEnemies(5);
+        spawnEnemies(2);
         entities.push_back(player);
 
         // Calculate the initial camera center based on the bounding box of all entities
