@@ -1,449 +1,360 @@
 #include <SFML/Graphics.hpp>
-#include <SFML/System/Clock.hpp>
-#include <vector>
 #include <iostream>
 
-// #define isn't working for some reason
+#define E_H 65             // ENTITY HEIGHT
+#define E_W 55             // ENTITY WIDTH
+#define E_SP 300.0f        // ENTITY SPEED
+#define BLT_SP 20.0f       // BULLET SPEED
 
-constexpr float WINDOW_WIDTH=1920.0f;
-constexpr float WINDOW_HEIGHT = 1080.0f;
-constexpr float MOVEMENT_SPEED = 250.0f;
-constexpr float GRAVITY = 800.0f;
-constexpr float JUMP_FORCE = 600.0f;
-constexpr float ENTITY_SIZE = 50.0f;
-constexpr float PROJECTILE_SPEED = 50.0f;
-constexpr int FPS = 144;
-class MovableEntity {
+#define P_HP 5             // PLAYER STARTING HP
+
+#define EN_HP 1            // ENEMY STARTING HP 
+#define EN_SPWN  600          // ENEMY SPAWN INTERVAL (in seconds)
+
+#define STARTX 0
+#define STARTY 0
+#define MAX_X 1024
+#define MAX_Y 768
+
+#define FPS 120
+
+class Entity : public sf::Sprite
+{
+protected:
+    int m_health;
+    int m_width;
+    int m_height;
+    float gravity;         // 
+    sf::Vector2f velocity;  // Velocity of the entity
 public:
-    MovableEntity(float startX, float startY, int startHealth) :
-        position(startX, startY),
-        velocity(0.0f, 0.0f),
-        isJumping(false),
-        jumpForce(JUMP_FORCE),
-        gravity(GRAVITY),
-        movementSpeed(MOVEMENT_SPEED),
-        isAlive(true),
-        currentDirection(Direction::Right),
-        health(startHealth)
-    {
-        // Set up any other properties or resources for the movable entity here
+    Entity(int health, int width, int height)
+        : m_health(health), m_width(width), m_height(height), velocity(0.0f, 0.0f), gravity(0.5f) {}
+
+    int getHealth() const { return m_health; }
+    void setHealth(int health) { m_health = health; }
+
+    int getWidth() const { return m_width; }
+    void setWidth(int width) { m_width = width; }
+
+    int getHeight() const { return m_height; }
+    void setHeight(int height) { m_height = height; }
+
+    sf::Vector2f getVelocity() const { return velocity; }
+    void setVelocity(const sf::Vector2f& vel) { velocity = vel; }
+
+    /* for testing only */
+    sf::RectangleShape m_rectangle;
+
+    bool isColliding(const Entity& other) const {
+        if (typeid(*this) == typeid(other)) {
+            // Entities of the same type don't cause damage
+            return false;
+        }
+        sf::FloatRect thisBounds = getGlobalBounds();
+        sf::FloatRect otherBounds = other.getGlobalBounds();
+        return thisBounds.intersects(otherBounds);
     }
 
-    virtual void update(float deltaTime, const std::vector<std::shared_ptr<MovableEntity>>& entities) {
-        if (!isAlive) {
-            // ...
-            return; // Skip the rest of the update logic for inactive entities
+    void update(float deltaTime) {
+        sf::Vector2f position = getPosition();
+
+        // Update the entity's position based on velocity
+        position += velocity * deltaTime * E_SP;  // Adjust the multiplier to control movement speed
+
+        // Check if the entity is within the window boundaries
+        if (position.x < 0) {
+            position.x = 0;
         }
+        if (position.x + m_width > MAX_X) {
+            position.x = MAX_X - m_width;
+        }
+        if (position.y < 0) {
+            position.y = 0;
+        }
+        if (position.y + m_height > MAX_Y) {
+            position.y = MAX_Y - m_height;
+        }
+        setPosition(position);
+    }
+};
 
-        // Apply gravity
-        velocity.y += gravity * deltaTime;
+class Bullet : public Entity
+{
+private:
+    sf::Texture spriteSheetTexture;
+    float playerScale;
+public:
+    Bullet(int x, int y, float scale)
+        : Entity(1, 5, 10) {
+        // Bullets have 1 HP and size 5x10
+        setPosition(x, y + E_H / 2); // adding to y because the bullet spawns a bit higher than the player's gun
+        playerScale = scale;
+        if (!spriteSheetTexture.loadFromFile("./player/john_idle.png"));
+        setTexture(spriteSheetTexture);
+        setTextureRect(sf::IntRect(0, 0, 26, 22));
+    }
 
-        // Move the entity horizontally
-        position.x += velocity.x * deltaTime;
+    void update(float deltaTime) {
+        sf::Vector2f position = getPosition();
 
-        // Move the entity vertically
-        position.y += velocity.y * deltaTime;
+        // Update the bullet's position based on the player's direction
+        float movementDirection = playerScale < 0 ? -1.0f : 1.0f;  // negative/positive scale indicates which way the player is facing. 
+        position.x += BLT_SP * movementDirection * deltaTime * E_SP;
+        setPosition(position);
+        if (position.x < STARTX || position.x > MAX_X || position.y < STARTY || position.y > MAX_Y) {
+            // Remove the bullet    
+            setHealth(0);
+        }
+        if (getHealth() <= 0) {
+            // Remove the bullet
+            return;
+        }
+    }
+};
 
-        // Check for collisions with other entities
-        for (const auto& entity : entities) {
-            if (entity.get() != this) {
-                if (isIntersecting(entity)) {
-                    handleCollision(entity);
-                }
+class Enemy : public Entity
+{
+private:
+    sf::Texture spriteSheetTexture;
+public:
+    Enemy(int health, int width, int height, const sf::Vector2f& spawnPosition)
+        : Entity(health, width, height) {
+        setPosition(spawnPosition);
+        if (!spriteSheetTexture.loadFromFile("./player/john_idle.png"))
+        {
+            std::cout << "pic not found" << std::endl;
+        }
+        // Define the coordinates and size of the desired part of the tile sheet
+        int tileX = 0;  // X coordinate of the tile within the tile sheet
+        int tileY = 0;  // Y coordinate of the tile within the tile sheet
+
+        // Set the texture rectangle of the sprite to display the desired part of the tile sheet
+        setTexture(spriteSheetTexture);
+        setTextureRect(sf::IntRect(tileX, tileY, 26, 22));
+        setScale(E_W / 26.0f, E_H / 22.0f);
+
+    }
+
+    void aiBehavior() {
+        // Implement AI behavior here
+    }
+
+    void update(float deltaTime) {
+        // Apply gravity to the the enemy
+        velocity.y += gravity;
+
+        // Update the enemys's position based on velocity
+        Entity::update(deltaTime);
+    }
+};
+
+class Player : public Entity
+{
+private:
+    sf::Texture spriteSheetTexture;
+    bool isJumping;        // Flag to track if the player is jumping
+    float jumpVelocity;    // Velocity of the player during jumping
+    int fireDelay;
+    std::vector<Bullet> bullets;
+public:
+    Player()
+        : Entity(P_HP, E_W, E_H), isJumping(false), jumpVelocity(-10.0f), fireDelay(0) {
+        //------------------------------------------------------------------------------------   
+        //add player sprite
+        if (!spriteSheetTexture.loadFromFile("./player/john_idle.png"))
+        {
+            //error accessing sprite location
+        }
+        // Define the coordinates and size of the desired part of the tile sheet
+        int tileX = 0;  // X coordinate of the tile within the tile sheet
+        int tileY = 0;  // Y coordinate of the tile within the tile sheet
+        int tileSize = 22;  // Size of each tile
+
+        // Set the texture rectangle of the sprite to display the desired part of the tile sheet
+        setTexture(spriteSheetTexture);
+        setTextureRect(sf::IntRect(tileX, tileY, 26, tileSize));
+        // Set the initial position, scale, or any other properties of the sprite
+        setPosition(MAX_X / 2, MAX_Y - E_H);
+        setScale(E_W / 26.0f, E_H / 22.0f);
+        //------------------------------------------------------------------------------------
+    }
+    void fire() {
+        if (fireDelay >= 30) { // If enough time has passed since the last shot
+            // Calculate the bullet's initial position based on the player's direction
+            sf::Vector2f bulletPosition;
+            if (getScale().x > 0) {
+                //std::cout << "facing right" << std::endl
+                bulletPosition = sf::Vector2f(getPosition().x + getWidth(), getPosition().y);
             }
-        }
+            else {
+                //std::cout << "facing left" << std::endl;
+                bulletPosition = sf::Vector2f(getPosition().x, getPosition().y);
+            }
 
-        // Update any other entity-specific logic here
-        // Temporary BOUNDS
-        if (position.x < 0.0f) {
-            // Adjust the position and velocity to prevent going beyond the left boundary
-            position.x = 0.0f;
-            velocity.x = 0.0f;
+            // Fire a bullet from the calculated position
+            bullets.push_back(Bullet(bulletPosition.x, bulletPosition.y, getScale().x));
+            //std::cout << "firedelay" << std::endl;
+            fireDelay = 0;
         }
-        else if (position.x > WINDOW_WIDTH - ENTITY_SIZE) {
-            // Adjust the position and velocity to prevent going beyond the right boundary
-            position.x = WINDOW_WIDTH - ENTITY_SIZE;
-            velocity.x = 0.0f;
-        }
-
-        if (position.y > WINDOW_HEIGHT - ENTITY_SIZE) {
-            // Adjust the position and velocity to prevent falling off the screen
-            position.y = WINDOW_HEIGHT - ENTITY_SIZE;
-            velocity.y = 0.0f;
-            isJumping = false;
-        }
-    }
-
-    void moveLeft() {
-        velocity.x = -movementSpeed;
-        currentDirection = Direction::Left;
-    }
-
-    void moveRight() {
-        velocity.x = movementSpeed;
-        currentDirection = Direction::Right;
     }
 
     void jump() {
         if (!isJumping) {
+            velocity.y = jumpVelocity;
             isJumping = true;
-            velocity.y = -jumpForce; // Instantly apply jump force
         }
     }
 
-    enum class Direction {
-        Left,
-        Right
-    };
-
-    sf::Vector2f getPosition() const {
-        return position;
-    }
-
-protected:
-    sf::Vector2f position;
-    sf::Vector2f velocity;
-    bool isJumping;
-    bool isAlive;
-    float jumpForce;
-    float gravity;
-    float movementSpeed;
-    int health;
-    Direction currentDirection;
-    bool isIntersecting(const std::shared_ptr<MovableEntity>& otherEntity) const {
-        sf::FloatRect thisBounds(position.x, position.y, 50.0f, 50.0f);
-        sf::FloatRect otherBounds(otherEntity->position.x, otherEntity->position.y, 50.0f, 50.0f);
-        return thisBounds.intersects(otherBounds);
-    }
-
-    void handleCollision(const std::shared_ptr<MovableEntity>& otherEntity) {
-        sf::FloatRect thisBounds(position.x, position.y, 50.0f, 50.0f);
-        sf::FloatRect otherBounds(otherEntity->position.x, otherEntity->position.y, 50.0f, 50.0f);
-        sf::FloatRect intersection;
-        thisBounds.intersects(otherBounds, intersection);
-
-        // Determine the side of collision
-        if (intersection.width < intersection.height) {
-            // Horizontal collision
-            if (position.x < otherEntity->position.x) {
-                // Collided from the left
-                position.x = otherEntity->position.x - 50.0f;
-            }
-            else {
-                // Collided from the right
-                position.x = otherEntity->position.x + 50.0f;
-            }
-            velocity.x = 0.0f;
-        }
-        else {
-            // Vertical collision
-            if (position.y < otherEntity->position.y) {
-                // Collided from above
-                position.y = otherEntity->position.y - 50.0f;
-                velocity.y = 0.0f;
-                isJumping = false; // Reset jumping state
-            }
-            else {
-                // Collided from below
-                position.y = otherEntity->position.y + 50.0f;
-                velocity.y = 0.0f;
-            }
-        }
-    }
-};
-
-class Player : public MovableEntity {
-public:
-    Player(float startX, float startY) : MovableEntity(startX, startY, 5) {
-        // Set up any other properties or resources specific to the player here
-    }
-
-    void update(float deltaTime, const std::vector<std::shared_ptr<MovableEntity>>& entities) {
-        // Update the player's movement based on the input
-        handleInput();
-
-        // Call the base class update function to handle movement and physics
-        MovableEntity::update(deltaTime, entities);
-
-        // Add any other player-specific logic here
-    }
-
-private:
     void handleInput() {
-        // Check the input and move the player accordingly
+        velocity.x = 0.0f;
 
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left)) {
-            moveLeft();
-        }
-        else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right)) {
-            moveRight();
-        }
-        else {
-            // Stop moving if no input is detected
-            velocity.x = 0.0f;
-        }
+            velocity.x = -1.0f;
+            setScale(-E_W / 26.0f, E_H / 22.0f);
+            setOrigin(E_W / 2 - E_W / 26.0f, 0); // karoche marjvniv tu midiodi da marcxniv gauxvdevdi an piriqit ucnaurad iyo dzaan da bevri kombinacia vcade
+            // sabolood aseti gamoiyureba yvelaze kargad rato ar vici ar sheexo
 
+        }
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right)) {
+            velocity.x = 1.0f;
+            setScale(E_W / 26.0f, E_H / 22.0f);
+            setOrigin(E_W / 26.0f - E_W / 4, 0); // esec
+
+        }
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space)) {
             jump();
         }
-
-
-    }
-};
-
-class Enemy : public MovableEntity {
-public:
-    Enemy(float startX, float startY) : MovableEntity(startX, startY, 1) {
-        // Set up any other properties or resources specific to the enemy here
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Z)) {
+            fire();
+        }
     }
 
-    void update(float deltaTime, const std::vector<std::shared_ptr<MovableEntity>>& entities) {
-        // Call the base class update function to handle movement and physics
+    void update(float deltaTime) {
+        // Apply gravity to the player
+        velocity.y += gravity;
 
-        // Find the player entity
-        std::shared_ptr<Player> player = nullptr;
-        for (const auto& entity : entities) {
-            if (std::dynamic_pointer_cast<Player>(entity) != nullptr) {
-                player = std::dynamic_pointer_cast<Player>(entity);
-                break;
-            }
+        // Update the player's position based on velocity
+        Entity::update(deltaTime);
+
+        // Check if the player is jumping and reached the peak
+        if (isJumping && velocity.y >= 0.0f) {
+            velocity.y = 0.0f;
+            isJumping = false;
+        }
+        fireDelay++; // Increment the fire delay
+
+        // Update the bullets
+        for (auto& bullet : bullets) {
+            bullet.update(deltaTime);
         }
 
-        // If the player entity is found, move towards it
-        if (player != nullptr) {
-            sf::Vector2f playerPosition = player->getPosition();
 
-            // Move towards the player horizontally
-            if (playerPosition.x < position.x) {
-                moveLeft();
-            }
-            else if (playerPosition.x > position.x) {
-                moveRight();
-            }
-
-            // Jump if the player is above the enemy
-            //if (playerPosition.y < position.y) {
-            //    jump();
-            //}
-        }
-        MovableEntity::update(deltaTime, entities);
-
-        // Add any other enemy-specific logic here
     }
+
+    std::vector<Bullet>& getBullets() { return bullets; }
+
 };
 
 
-class Game {
 
+class Game
+{
+private:
+    sf::RenderWindow window;
+    sf::Clock enemySpawnClock;
+    sf::Time enemySpawnTimer;
+    sf::Time enemySpawnInterval = sf::milliseconds(EN_SPWN);
+    std::vector<Enemy> enemies;
+    std::vector<sf::Vector2f> spawnPoints;
 public:
-    Game() : window(sf::VideoMode(WINDOW_WIDTH, WINDOW_HEIGHT), "Game"), view(sf::FloatRect(0, 0, WINDOW_WIDTH/1.5, WINDOW_HEIGHT/1.5)) {
-        // Set up any initial game variables or resources here
+    Game() : window(sf::VideoMode(MAX_X, MAX_Y), "SEX") {
         window.setFramerateLimit(FPS);
-        window.setView(view);
 
-        // Create and add player entity
-        player = std::make_shared<Player>(100.0f, WINDOW_HEIGHT - 50.0f); // -50.0f because of current height of the player
-        // Create and add enemy entities
-        spawnEnemies(2);
-        entities.push_back(player);
+        // spawn points on the right side
+        spawnPoints.push_back(sf::Vector2f(E_W, MAX_Y - E_H));   // bottom
+        spawnPoints.push_back(sf::Vector2f(E_W, MAX_Y - E_H - 50));
 
-        // Calculate the initial camera center based on the bounding box of all entities
-        float minX = std::numeric_limits<float>::max();
-        float maxX = std::numeric_limits<float>::min();
-        float minY = std::numeric_limits<float>::max();
-        float maxY = std::numeric_limits<float>::min();
+        //spawn points on the left side
+        spawnPoints.push_back(sf::Vector2f(MAX_X - E_W, MAX_Y - E_H)); // bottom
+        spawnPoints.push_back(sf::Vector2f(MAX_X - E_W, MAX_Y - E_H - 50));
 
-        initializeBorders();
-
-        for (const auto& entity : entities) {
-            const sf::Vector2f& position = entity->getPosition();
-            if (position.x < minX) {
-                minX = position.x;
-            }
-            if (position.x > maxX) {
-                maxX = position.x;
-            }
-            if (position.y < minY) {
-                minY = position.y;
-            }
-            if (position.y > maxY) {
-                maxY = position.y;
-            }
-        }
-
-        sf::Vector2f center((minX + maxX) / 2.0f, (minY + maxY) / 2.0f);
-
-        // Set the initial camera center
-        view.setCenter(center);
-        window.setView(view);
-        isRunning = true;
-    }
-
-    void spawnEnemies(int numEnemies) {
-        float startX = WINDOW_WIDTH - ENTITY_SIZE*2; // Set the starting X position for the enemies
-        float startY = ENTITY_SIZE; // Set the starting Y position for the enemies
-        float spacing = ENTITY_SIZE + 10; // Set the spacing between enemies
-
-        for (int i = 0; i < numEnemies; ++i) {
-            std::shared_ptr<Enemy> enemy = std::make_shared<Enemy>(startX, startY);
-            entities.push_back(enemy);
-
-            startX -= spacing; // Update the X position for the next enemy
-        }
     }
 
     void run() {
+        Player player;
+
         sf::Clock clock;
-        while (window.isOpen() && isRunning) {
-            float deltaTime = clock.restart().asSeconds();
-            processEvents();
-            update(deltaTime);
-            render();
-        }
-    }
+        while (window.isOpen()) {
+            while (player.getHealth() > 0)
+                //while (1)
 
-private:
-    sf::RenderWindow window;
-    std::shared_ptr<Player> player;
-    std::vector<std::shared_ptr<MovableEntity>> entities;
-    sf::View view;
-    bool isRunning;
-    sf::RectangleShape leftBorder;
-    sf::RectangleShape rightBorder;
-    sf::RectangleShape bottomBorder;
-    void processEvents() {
-        sf::Event event;
-        while (window.pollEvent(event)) {
-            if (event.type == sf::Event::Closed) {
-                window.close();
+            { 
+                sf::Event event;
+                while (window.pollEvent(event)) {
+                    if (event.type == sf::Event::Closed) {
+                        window.close();
+                    }
+                    player.handleInput();
+                }
+
+                // Update game state here
+                float deltaTime = clock.restart().asSeconds();
+                player.update(deltaTime);
+                if (enemySpawnClock.getElapsedTime() >= enemySpawnInterval) {
+                    int spawnIndex = std::rand() % spawnPoints.size();
+                    sf::Vector2f spawnPosition = spawnPoints[spawnIndex];
+                    enemies.push_back(Enemy(EN_HP, E_W, E_H, spawnPosition));
+                    enemySpawnClock.restart();
+                }
+
+                // Update enemies
+                for (auto it = enemies.begin(); it != enemies.end(); ) {
+                    auto& enemy = *it;
+                    enemy.update(deltaTime);
+
+                    if (enemy.isColliding(player)) {
+                        std::cout << "gay" << std::endl;
+                        player.setHealth(player.getHealth() - 1);
+                        enemy.setHealth(enemy.getHealth() - 1);
+                    }
+                    for (auto bulletIt = player.getBullets().begin(); bulletIt != player.getBullets().end(); ) {
+                        auto& bullet = *bulletIt;
+                        if (bullet.isColliding(enemy)) {
+                            std::cout << "Collision with enemy" << std::endl;
+                            bullet.setHealth(0);
+                            enemy.setHealth(enemy.getHealth() - 1);
+                        }
+
+                        if (bullet.getHealth() <= 0) {
+                            bulletIt = player.getBullets().erase(bulletIt);  // Remove the bullet
+                        }
+                        else {
+                            ++bulletIt;
+                        }
+                    }
+                    if (enemy.getHealth() <= 0) {
+                        it = enemies.erase(it);  // Remove the enemy
+                    }
+                    else {
+                        ++it;
+                    }
+                }
+
+                window.clear();
+                window.draw(player);
+                for (const auto& enemy : enemies) {
+                    window.draw(enemy);
+                }
+                for (const auto& bullet : player.getBullets()) {
+                    window.draw(bullet);
+                }
+                window.display();
             }
-            else if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::X) {
-                isRunning = false; // Set the flag to stop the game loop
-                window.close(); // Close the window
-            }
-        }
-
-    }
-private:
-    void initializeBorders() {
-        // Initialize the left border
-        leftBorder.setSize(sf::Vector2f(10.0f, WINDOW_HEIGHT));
-        leftBorder.setFillColor(sf::Color::White);
-        leftBorder.setPosition(0.0f, 0.0f);
-
-        // Initialize the right border
-        rightBorder.setSize(sf::Vector2f(10.0f, WINDOW_HEIGHT));
-        rightBorder.setFillColor(sf::Color::White);
-        rightBorder.setPosition(WINDOW_WIDTH - 10.0f, 0.0f);
-
-        // Bottom border
-        bottomBorder.setSize(sf::Vector2f(WINDOW_WIDTH, 10.0f));
-        bottomBorder.setFillColor(sf::Color::White);
-        bottomBorder.setPosition(0.0f, WINDOW_HEIGHT - 10.0f);
-    }
-    void update(float deltaTime) {
-        // Update all entities
-        for (const auto& entity : entities) {
-            entity->update(deltaTime, entities);
-        }
-
-        // Calculate the bounding box of all entities
-        float minX = std::numeric_limits<float>::max();
-        float maxX = std::numeric_limits<float>::min();
-        float minY = std::numeric_limits<float>::max();
-        float maxY = std::numeric_limits<float>::min();
-
-        for (const auto& entity : entities) {
-            const sf::Vector2f& position = entity->getPosition();
-            if (position.x < minX) {
-                minX = position.x;
-            }
-            if (position.x > maxX) {
-                maxX = position.x;
-            }
-            if (position.y < minY) {
-                minY = position.y;
-            }
-            if (position.y > maxY) {
-                maxY = position.y;
+            if (player.getHealth() <1)
+            {
+                std::cout << "YOU'VE LOST" << std::endl;
             }
         }
-
-        // Calculate the player's position
-        sf::Vector2f playerPosition = player->getPosition();
-
-        // Calculate the camera center based on the bounding box and player's position
-        float centerX = (minX + maxX) / 2.0f;
-        float centerY = (minY + maxY) / 2.0f;
-
-        // Calculate the distance between the camera center and player's position
-        float distanceX = std::abs(centerX - playerPosition.x);
-        float distanceY = std::abs(centerY - playerPosition.y);
-
-        // Adjust the camera center based on the distance between entities and player
-        if (distanceX > 400.0f) {
-            centerX = playerPosition.x + (centerX - playerPosition.x) * 0.5f;
-        }
-        if (distanceY > 300.0f) {
-            centerY = playerPosition.y + (centerY - playerPosition.y) * 0.5f;
-        }
-
-        // Keep the camera within the window bounds
-        float halfWidth = view.getSize().x / 2.0f;
-        float halfHeight = view.getSize().y / 2.0f;
-
-        if (centerX - halfWidth < 0.0f) {
-            centerX = halfWidth;
-        }
-        else if (centerX + halfWidth > WINDOW_WIDTH) {
-            centerX = WINDOW_WIDTH - halfWidth;
-        }
-
-        if (centerY - halfHeight < 0.0f) {
-            centerY = halfHeight;
-        }
-        else if (centerY + halfHeight > WINDOW_HEIGHT) {
-            centerY = WINDOW_HEIGHT - halfHeight;
-        }
-
-        sf::Vector2f center(centerX, centerY);
-
-        sf::Vector2f currentCenter = view.getCenter();
-        sf::Vector2f newCenter = currentCenter + (center - currentCenter) * 0.05f;
-        view.setCenter(newCenter);
-        window.setView(view);
-    }
-
-    void render() {
-        window.clear();
-
-        // Draw borders
-        window.draw(leftBorder);
-
-        window.draw(rightBorder);
-
-        window.draw(bottomBorder);
-
-        // Render all entities
-        for (const auto& entity : entities) {
-            renderEntity(entity);
-        }
-
-        window.display();
-    }
-
-    void renderEntity(const std::shared_ptr<MovableEntity>& entity) {
-        sf::RectangleShape shape(sf::Vector2f(50.0f, 50.0f));
-        shape.setPosition(entity->getPosition());
-
-        if (std::dynamic_pointer_cast<Player>(entity) != nullptr) {
-            shape.setFillColor(sf::Color::Green);
-        }
-        else {
-            shape.setFillColor(sf::Color::Red);
-        }
-
-        window.draw(shape);
     }
 
 };
@@ -451,6 +362,5 @@ private:
 int main() {
     Game game;
     game.run();
-
     return 0;
 }
