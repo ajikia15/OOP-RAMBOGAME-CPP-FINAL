@@ -1,9 +1,4 @@
 #include <SFML/Graphics.hpp>
-#include <cmath>
-
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
 
 #define E_H 50             // ENTITY HEIGHT
 #define E_W 60             // ENTITY WIDTH
@@ -17,13 +12,11 @@
 
 #define FPS 90
 
-
-
 class Entity : public sf::Transformable
 {
 public:
     Entity(int health, int moveSpeed, int damage, int width, int height)
-        : m_health(health), m_damage(damage), m_width(width), m_height(height) {}
+        : m_health(health), m_damage(damage), m_width(width), m_height(height), isJumping(false), velocity(0, 0), acceleration(0) {}
 
     int getHealth() const { return m_health; }
     void setHealth(int health) { m_health = health; }
@@ -37,15 +30,31 @@ public:
 
     int getHeight() const { return m_height; }
     void setHeight(int height) { m_height = height; }
+    
     int getx() { return x; }
     void setx(int xs) { x = xs; }
+    
     int gety() { return y; }
     void sety(int ys) { y = ys; }
+
+    bool getIsJumping() const { return isJumping; }
+    void setIsJumping(bool jumping) { isJumping = jumping; }
+
+    void jump() {
+        if (!getIsJumping()) {
+            isJumping = true;
+            velocity.y = -50;  // Adjust this value as needed
+            acceleration = 1.0;  // Adjust this value as needed
+        }
+    }
 
     /* for testing only */
     sf::RectangleShape m_rectangle;
 
-
+protected:
+    sf::Vector2f velocity;  // New member variable for velocity
+    float acceleration;    // New member variable for acceleration
+    bool isJumping;         // New member variable for jumping state
 
 private:
     int m_health;
@@ -61,38 +70,34 @@ private:
     sf::Texture spriteSheetTexture;
     sf::Sprite playerSprite;
     sf::Vector2f direction;
+
 public:
     Player(int health, int x, int y, int width, int height, int moveSpeed, int damage)
         : Entity(health, speed, damage, width, height), direction(1, 0)
     {
-        //------------------------------------------------------------------------------------   
-            //add player sprite
         if (!spriteSheetTexture.loadFromFile("./player/john_idle.png"))
         {
-            //error accesing sprite location
+            // Error accessing sprite location
         }
-        // Define the coordinates and size of the desired part of the tile sheet
-        int tileX = 0;  // X coordinate of the tile within the tile sheet
-        int tileY = 0;  // Y coordinate of the tile within the tile sheet
-        int tileSize = 22;  // Size of each tile
 
-        // Set the texture rectangle of the sprite to display the desired part of the tile sheet
+        int tileX = 0;
+        int tileY = 0;
+        int tileSize = 22;
+
         playerSprite.setTexture(spriteSheetTexture);
         playerSprite.setTextureRect(sf::IntRect(tileX, tileY, tileSize, tileSize));
 
         playerSprite.setPosition(x, y);
-        playerSprite.setScale( E_W / 26.0f, E_H / 22.0f);
+        playerSprite.setScale(E_W / 26.0f, E_H / 22.0f);
     }
+
     sf::Sprite& getPlayerSprite() {
         return playerSprite;
     }
-    //------------------------------------------------------------------------------------
 
     void move(sf::Vector2f direction) {
-        // Calculate the new position of the player sprite
         sf::Vector2f newPosition = playerSprite.getPosition() + sf::Vector2f(direction.x * speed, direction.y * speed);
 
-        // Make sure the player sprite stays within the bounds of the screen
         if (newPosition.x < STARTX) {
             newPosition.x = STARTX;
         }
@@ -105,19 +110,29 @@ public:
         if (newPosition.y + getHeight() > MAX_Y) {
             newPosition.y = MAX_Y - getHeight();
         }
+
+        if (isJumping) {
+            velocity.y += acceleration;
+            newPosition.y += velocity.y;
+
+            if (newPosition.y >= STARTY) {
+                newPosition.y = STARTY;
+                isJumping = false;
+                velocity.y = 0;
+                acceleration = 0;
+            }
+        }
+
         this->direction = direction;
-        // Update the position of the player sprite
         playerSprite.setPosition(newPosition);
     }
 
-
-    void jump() {
-        // Implement jumping logic here
-    }
+    
 
     void shoot() {
         // Implement shooting logic here
     }
+
     void handleInput() {
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left)) {
             move(sf::Vector2f(-1, 0));
@@ -125,19 +140,23 @@ public:
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right)) {
             move(sf::Vector2f(1, 0));
         }
-
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up)) {
+            jump();
+        }
     }
+
     void draw(sf::RenderWindow& window)
     {
-        // Rotate the player sprite based on the current direction
-        if (direction.x > 0) {
-            playerSprite.setScale(E_W / 26.0f, E_H / 22.0f); // Normal scale for facing right
-        }
-        else if (direction.x < 0) {
-            playerSprite.setScale(-E_W / 26.0f, E_H / 22.0f); // Horizontal flip for facing left
+
+        if (direction.x != 0) {
+            if (direction.x > 0) {
+                playerSprite.setScale(E_W / 26.0f, E_H / 22.0f);
+            }
+            else if (direction.x < 0) {
+                playerSprite.setScale(-E_W / 26.0f, E_H / 22.0f);
+            }
         }
 
-        // Draw the player sprite
         window.draw(playerSprite);
     }
 };
@@ -156,7 +175,7 @@ public:
 class Game
 {
 public:
-    Game() : window(sf::VideoMode(MAX_X, MAX_Y), "SEX") {
+    Game() : window(sf::VideoMode(MAX_X, MAX_Y), "Game Window") {
         window.setFramerateLimit(FPS);
     }
 
@@ -172,15 +191,14 @@ public:
                 player.handleInput();
             }
 
-            // Update game state here
-
             window.clear();
+
+            player.move(sf::Vector2f(0, 0));  // Update player position only if not jumping
 
             player.draw(window);
             window.display();
         }
     }
-
 
 private:
     sf::RenderWindow window;
