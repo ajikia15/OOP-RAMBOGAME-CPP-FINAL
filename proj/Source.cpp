@@ -19,11 +19,11 @@
 
 #define FPS 120
 
-#define END 0
-#define MAINMENU -1
-#define GAME 2
-#define LOST 3 
-#define GUIDE 4
+#define MAINMENU 0
+#define GAME 1
+#define GUIDE 2
+#define END 3
+#define LOST 4
 
 #define MENUTEXTSTART 300
 #define MAINMENUTEXTCOUNT 3
@@ -298,7 +298,14 @@ public:
             fireDelay = 0;
         }
     }
-
+    void clearBullets()
+    {
+        bullets.clear();
+    }
+    void respawn()
+    {
+        setHealth(P_HP);
+    }
     void jump() {
         //..........................................................................................
         if (!isJumping)
@@ -621,6 +628,7 @@ public:
     }
     void createText()
     {
+
         selectedOption = -1;
 
         menuOptions[0].setString("Play");
@@ -633,10 +641,7 @@ public:
             menuOptions[i].setFont(mainFont);
             menuOptions[i].setCharacterSize(50);
             menuOptions[i].setPosition((MAX_X - menuOptions[i].getGlobalBounds().width) / 2, 300 + i * 100);
-
         }
-
-
     }
     void drawMainMenuText() {
         sf::Text title("GAY RAMBO", titleFont, 100);
@@ -691,11 +696,11 @@ public:
                         selectedOption == -1 ? selectedOption=0 : selectedOption != 0 ? selectedOption-- : 2;  // kai araa lamazi mara asworebs
                     }
                     if (sf::Keyboard::isKeyPressed(sf::Keyboard::Enter) && selectedOption>-1) {
-                        setGameState(selectedOption+2);
+                        setGameState(selectedOption+1);
                         window.clear();
                         break;
                     }
-                    if (sf::Keyboard::isKeyPressed(sf::Keyboard::X)) {
+                    if (sf::Keyboard::isKeyPressed(sf::Keyboard::P)) {
                         window.close();
                     }
                 }
@@ -790,15 +795,20 @@ public:
             while (getGameState() == LOST)
             {
                 sf::Event event;
-                std::cout << getGameState() << std::endl;
                 while (window.pollEvent(event)) {
                     if (event.type == sf::Event::Closed) {
                         window.close();
                     }
-                    if (event.type == sf::Keyboard::X)
+                    if (sf::Keyboard::isKeyPressed(sf::Keyboard::X))
                     {
+                        std::cout << getGameState() << std::endl;
                         setGameState(MAINMENU);
+                        enemies.clear();
+                        player.clearBullets();
+                        player.respawn();
+                        clock.restart();
                         window.clear();
+                        window.display();
                         break;
                         
                     }
@@ -808,7 +818,10 @@ public:
                 drawGameOverText();
                 window.display();
             }
-            
+            while (getGameState() == END)
+            {
+                window.close();
+            }
         }
     }
 
