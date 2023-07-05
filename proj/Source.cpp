@@ -3,6 +3,7 @@
 
 #define E_H 65             // ENTITY HEIGHT
 #define E_W 55             // ENTITY WIDTH
+#define EN_W 65
 #define E_SP 300.0f        // ENTITY SPEED
 #define BLT_SP 20.0f       // BULLET SPEED
 
@@ -54,7 +55,11 @@ public:
         sf::FloatRect otherBounds = other.getGlobalBounds();
         return thisBounds.intersects(otherBounds);
     }
-
+    bool isEnemyColliding(const Entity& other) const {
+        sf::FloatRect thisBounds = getGlobalBounds();
+        sf::FloatRect otherBounds = other.getGlobalBounds();
+        return thisBounds.intersects(otherBounds);
+    }
     void update(float deltaTime) {
         sf::Vector2f position = getPosition();
 
@@ -81,17 +86,20 @@ public:
 class Bullet : public Entity
 {
 private:
-    sf::Texture spriteSheetTexture;
+    static sf::Texture bulletSheet;
     float playerScale;
 public:
     Bullet(int x, int y, float scale)
         : Entity(1, 5, 10) {
         // Bullets have 1 HP and size 5x10
-        setPosition(x, y + E_H / 2); // adding to y because the bullet spawns a bit higher than the player's gun
+        setPosition(x, y + E_H / 3); // adding to y because the bullet spawns a bit higher than the player's gun
         playerScale = scale;
-        if (!spriteSheetTexture.loadFromFile("./player/john_idle.png"));
-        setTexture(spriteSheetTexture);
-        setTextureRect(sf::IntRect(0, 0, 26, 22));
+        if (!bulletSheet.loadFromFile("./player/weapon_bullet_level2.png")) {
+            std::cout << "balls" << std::endl;
+        }
+        Bullet::setTexture(bulletSheet);
+        setTextureRect(sf::IntRect(0, 0, 18, 16));
+        setScale(E_W / 18.0f / 2, E_H / 16.0f / 2);
     }
 
     void update(float deltaTime) {
@@ -111,77 +119,156 @@ public:
         }
     }
 };
+sf::Texture Bullet::bulletSheet;
 
 class Enemy : public Entity
 {
 private:
-    sf::Texture spriteSheetTexture;
+    sf::Vector2f lastValidPosition;
+    static sf::Texture enemySheetIdle;
+    static sf::Texture enemySheetMove;
+    int numFrames = 4;              // Number of animation frames
+    int currentFrame = 0;           // Current frame index
+    int frameWidth = 170;           // Width of each frame in pixels
+    int frameHeight = 96;           // Height of each frame in pixels
+    float animationSpeed = 0.1f;    // Speed of the animation (adjust as needed)
+    sf::Clock animationClock;       // Clock to track the time for animation frame update
+
 public:
     Enemy(int health, int width, int height, const sf::Vector2f& spawnPosition)
         : Entity(health, width, height) {
         setPosition(spawnPosition);
-        if (!spriteSheetTexture.loadFromFile("./player/john_idle.png"))
-        {
-            std::cout << "pic not found" << std::endl;
+        if (!enemySheetIdle.loadFromFile("./enemy_sheet_idle.png")) {
+            std::cout << "Failed to load enemy idle texture!" << std::endl;
+        }
+
+        if (!enemySheetMove.loadFromFile("./enemy_sheet_move.png")) {
+            std::cout << "Failed to load enemy move texture!" << std::endl;
         }
         // Define the coordinates and size of the desired part of the tile sheet
         int tileX = 0;  // X coordinate of the tile within the tile sheet
         int tileY = 0;  // Y coordinate of the tile within the tile sheet
 
         // Set the texture rectangle of the sprite to display the desired part of the tile sheet
-        setTexture(spriteSheetTexture);
-        setTextureRect(sf::IntRect(tileX, tileY, 26, 22));
-        setScale(E_W / 26.0f, E_H / 22.0f);
+       
+        setTextureRect(sf::IntRect(tileX, tileY, 170, 102));
 
     }
 
-    void aiBehavior() {
-        // Implement AI behavior here
-    }
+    void update(float deltaTime, const std::vector<Enemy>& enemies, const sf::Vector2f& playerPosition) {
+        // Store the current position as the last valid position
+        lastValidPosition = getPosition();
 
-    void update(float deltaTime) {
-        // Apply gravity to the the enemy
+        // Apply gravity to the enemy
         velocity.y += gravity;
 
-        // Update the enemys's position based on velocity
+        // Calculate the direction towards the player
+        sf::Vector2f direction = playerPosition - getPosition();
+
+        // Check for collisions with other enemies
+        for (const auto& otherEnemy : enemies) {
+            if (this != &otherEnemy && isEnemyColliding(otherEnemy)) {
+                // Collision occurred with another enemy, revert to last known valid position
+                setPosition(lastValidPosition);
+                break;
+            }
+        }
+
+        // Adjust the horizontal velocity based on the direction towards the player
+        if (direction.x > 0) {
+            velocity.x = 1.0f;  // Move right
+            setTexture(enemySheetMove);  // Set the moving animation texture
+        }
+        else if (direction.x < 0) {
+            velocity.x = -1.0f; // Move left
+            setTexture(enemySheetMove);  // Set the moving animation texture
+        }
+        else {
+            velocity.x = 0.0f;  // Stop moving horizontally if player is in line
+            setTexture(enemySheetIdle);  // Set the idle animation texture
+        }
+
+        // Update the animation frame if enough time has passed
+        if (animationClock.getElapsedTime().asSeconds() >= animationSpeed) {
+            currentFrame++;  // Move to the next frame
+            if (currentFrame >= numFrames) {
+                currentFrame = 0;  // Reset to the first frame if the last frame is reached
+            }
+
+            // Calculate the x-coordinate of the current frame in the sprite sheet
+            int frameX = currentFrame * frameWidth;
+
+            // Set the texture rectangle of the sprite to display the current frame
+            setTextureRect(sf::IntRect(frameX, 0, frameWidth, frameHeight));
+
+            animationClock.restart();  // Restart the animation clock
+        }
+
+        // Update the enemy's position based on velocity
         Entity::update(deltaTime);
     }
 };
+sf::Texture Enemy::enemySheetIdle;
+sf::Texture Enemy::enemySheetMove;
+
 
 class Player : public Entity
 {
 private:
-    sf::Texture spriteSheetTexture;
+    //..........................................................................................
+    sf::Texture idleSpriteSheetTexture;
+    sf::Texture moveSpriteSheetTexture;
+    sf::Texture jumpSpriteSheetTexture;
+    //..........................................................................................
+
+
     bool isJumping;        // Flag to track if the player is jumping
     float jumpVelocity;    // Velocity of the player during jumping
     int fireDelay;
     std::vector<Bullet> bullets;
+
+
+    //..........................................................................................
+    int numFramesIdle;
+    int numFramesMove;
+    int numFramesJump;
+    int currentFrame;
+    int frameWidth;
+    int frameHeight;
+    float animationSpeed;
+    sf::Clock animationClock;
+    //..........................................................................................
+
 public:
     Player()
-        : Entity(P_HP, E_W, E_H), isJumping(false), jumpVelocity(-10.0f), fireDelay(0) {
-        //------------------------------------------------------------------------------------   
-        //add player sprite
-        if (!spriteSheetTexture.loadFromFile("./player/john_idle.png"))
+        : Entity(P_HP, E_W, E_H), isJumping(false), jumpVelocity(-10.0f), fireDelay(0),
+          numFramesIdle(4), numFramesMove(8), currentFrame(0), frameWidth(26),
+          frameHeight(22), animationSpeed(0.1f), numFramesJump(6)
+    {
+        //..........................................................................................
+        if (!idleSpriteSheetTexture.loadFromFile("./player/john_idle.png"))
         {
-            //error accessing sprite location
+            // Handle error loading idle sprite sheet
         }
-        // Define the coordinates and size of the desired part of the tile sheet
-        int tileX = 0;  // X coordinate of the tile within the tile sheet
-        int tileY = 0;  // Y coordinate of the tile within the tile sheet
-        int tileSize = 22;  // Size of each tile
 
-        // Set the texture rectangle of the sprite to display the desired part of the tile sheet
-        setTexture(spriteSheetTexture);
-        setTextureRect(sf::IntRect(tileX, tileY, 26, tileSize));
-        // Set the initial position, scale, or any other properties of the sprite
+        if (!moveSpriteSheetTexture.loadFromFile("./player/john_run.png"))
+        {
+            // Handle error loading move sprite sheet
+        }
+        if (!jumpSpriteSheetTexture.loadFromFile("./player/john_jump.png"))
+        {
+            // Handle error loading jump sprite sheet
+        }
+        //..........................................................................................
+        int tileSize = 22;
+
+        // Set the initial texture and position
+        setTexture(idleSpriteSheetTexture);
+        setTextureRect(sf::IntRect(0, 0, frameWidth, tileSize));
         setPosition(MAX_X / 2, MAX_Y - E_H);
         setScale(E_W / 26.0f, E_H / 22.0f);
-        //------------------------------------------------------------------------------------
     }
     void fire() {
-
-
-
         if (fireDelay >= 30) { // If enough time has passed since the last shot
             // Calculate the bullet's initial position based on the player's direction
             sf::Vector2f bulletPosition;
@@ -202,14 +289,27 @@ public:
     }
 
     void jump() {
-        if (!isJumping) {
+        //..........................................................................................
+        if (!isJumping)
+        {
             velocity.y = jumpVelocity;
             isJumping = true;
+            currentFrame = 0;  // Reset the animation frame for jump
+            setTexture(jumpSpriteSheetTexture);  // Switch to jump sprite sheet
+            animationClock.restart();  // Restart the animation clock for jump
         }
+        //..........................................................................................
     }
 
     void handleInput() {
+        //..........................................................................................
         velocity.x = 0.0f;
+        if (velocity.x != 0.0f && currentFrame != 0) {
+            currentFrame = 0;
+            int frameX = currentFrame * frameWidth;
+            setTextureRect(sf::IntRect(frameX, 0, frameWidth, frameHeight));
+        }
+        //..........................................................................................
 
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left)) {
             velocity.x = -1.0f;
@@ -252,6 +352,47 @@ public:
         }
 
 
+
+
+        //..........................................................................................
+        // Update the animation frame if enough time has passed
+        if (animationClock.getElapsedTime().asSeconds() >= animationSpeed)
+        {
+            if (velocity.x != 0.0f)
+            {
+                currentFrame++;  // Move to the next frame
+                if (currentFrame >= numFramesMove)
+                {
+                    currentFrame = 0;  // Reset to the first frame if the last frame is reached
+                }
+                setTexture(moveSpriteSheetTexture);  // Switch to move sprite sheet
+            }
+            else if (isJumping)
+            {
+                currentFrame++;  // Move to the next frame
+                if (currentFrame >= numFramesJump)
+                {
+                    currentFrame = 0;  // Reset to the first frame if the last frame is reached
+                }
+                setTexture(jumpSpriteSheetTexture);  // Switch to jump sprite sheet
+            }
+            else
+            {
+                currentFrame++;  // Move to the next frame
+                if (currentFrame >= numFramesIdle)
+                {
+                    currentFrame = 0;  // Reset to the first frame if the last frame is reached
+                }
+                setTexture(idleSpriteSheetTexture);  // Switch to idle sprite sheet
+            }
+
+            int frameX = currentFrame * frameWidth;
+            setTextureRect(sf::IntRect(frameX, 0, frameWidth, frameHeight));
+
+            animationClock.restart();  // Restart the animation clock
+        }
+        //..........................................................................................
+        
     }
 
     std::vector<Bullet>& getBullets() { return bullets; }
@@ -339,7 +480,7 @@ public:
         window.draw(backgroundSprite1);
 
 
-        int numSprites = 20; // Number of sprites to print
+        int numSprites = MAX_X / 20; // Number of sprites to print
         int spacing = 50; // Spacing between each sprite
         int i = 0;
 
@@ -415,7 +556,7 @@ public:
     }
     //----------------------------------------------------------------------------------------------
     sf::Vector2f getPlayerPositionOnSprite(const Player& player) const {
-        for (const sf::Sprite & currentSprite : sprites) {
+        for (const sf::Sprite& currentSprite : sprites) {
             if (currentSprite.getGlobalBounds().intersects(player.getGlobalBounds())) {
                 sf::FloatRect intersection;
                 currentSprite.getGlobalBounds().intersects(player.getGlobalBounds(), intersection);
@@ -429,7 +570,6 @@ public:
     }
     //---------------------------------------------------------------------------------------------
 };
-
 class Game
 {
 private:
@@ -440,36 +580,31 @@ private:
     std::vector<Enemy> enemies;
     std::vector<sf::Vector2f> spawnPoints;
 
-
 public:
     Game() : window(sf::VideoMode(MAX_X, MAX_Y), "SEX") {
         window.setFramerateLimit(FPS);
 
         // spawn points on the right side
         spawnPoints.push_back(sf::Vector2f(E_W, MAX_Y - E_H));   // bottom
-        spawnPoints.push_back(sf::Vector2f(E_W, MAX_Y - E_H - 50));
+        spawnPoints.push_back(sf::Vector2f(E_W, MAX_Y - E_H - 200));
 
         //spawn points on the left side
         spawnPoints.push_back(sf::Vector2f(MAX_X - E_W, MAX_Y - E_H)); // bottom
-        spawnPoints.push_back(sf::Vector2f(MAX_X - E_W, MAX_Y - E_H - 50));
+        spawnPoints.push_back(sf::Vector2f(MAX_X - E_W, MAX_Y - E_H - 200));
 
     }
 
     void run() {
         Player player;
         Map map;
-
-
         map.Load();
-        
-        
-
-
         sf::Clock clock;
         while (window.isOpen()) {
             while (player.getHealth() > 0)
             {
-               
+                
+
+
                 sf::Event event;
                 while (window.pollEvent(event)) {
                     if (event.type == sf::Event::Closed) {
@@ -490,7 +625,7 @@ public:
                 }
 
                 //--------------------------------------------------------------------------------------------------
-                
+
                 if (enemySpawnClock.getElapsedTime() >= enemySpawnInterval) {
                     int spawnIndex = std::rand() % spawnPoints.size();
                     sf::Vector2f spawnPosition = spawnPoints[spawnIndex];
@@ -501,18 +636,18 @@ public:
                 // Update enemies
                 for (auto it = enemies.begin(); it != enemies.end(); ) {
                     auto& enemy = *it;
-                    enemy.update(deltaTime);
+                    enemy.update(deltaTime, enemies, player.getPosition());
 
                     if (enemy.isColliding(player)) {
                         std::cout << "gay" << std::endl;
                         player.setHealth(player.getHealth() - 1);
                         enemy.setHealth(enemy.getHealth() - 1);
                     }
-                    
+
                     for (auto bulletIt = player.getBullets().begin(); bulletIt != player.getBullets().end(); ) {
                         auto& bullet = *bulletIt;
                         if (bullet.isColliding(enemy)) {
-                            std::cout << "Collision with enemy" << std::endl;
+                            //std::cout << "Collision with enemy" << std::endl;
                             bullet.setHealth(0);
                             enemy.setHealth(enemy.getHealth() - 1);
                         }
@@ -530,11 +665,7 @@ public:
                     else {
                         ++it;
                     }
-
-
-                    
                 }
-                
                 window.clear();
                 map.Draw(window);
                 window.draw(player);
