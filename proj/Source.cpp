@@ -1,6 +1,5 @@
 #include <SFML/Graphics.hpp>
 
-
 #define E_H 50             // ENTITY HEIGHT
 #define E_W 50             // ENTITY WIDTH
 #define P_HP 5             // PLAYER STARTING HP
@@ -13,25 +12,19 @@
 
 #define FPS 120
 
-
-
-class Entity : public sf::Transformable
+class Entity
 {
+protected:
+    int m_health;
+    int m_width;
+    int m_height;
+
 public:
-    Entity(int health, int moveSpeed, int damage, int width, int height)
-        : m_health(health), m_moveSpeed(moveSpeed), m_damage(damage), m_width(width), m_height(height) {}
+    Entity(int health, int width, int height)
+        : m_health(health), m_width(width), m_height(height) {}
 
     int getHealth() const { return m_health; }
     void setHealth(int health) { m_health = health; }
-
-    int getMoveSpeed() const { return m_moveSpeed; }
-    void setMoveSpeed(int moveSpeed) { m_moveSpeed = moveSpeed; }
-
-    int getDamage() const { return m_damage; }
-    void setDamage(int damage) { m_damage = damage; }
-
-    sf::Vector2f getPosition() const { return this->getPosition(); }
-    void setPosition(const sf::Vector2f& position) { this->setPosition(position); }
 
     int getWidth() const { return m_width; }
     void setWidth(int width) { m_width = width; }
@@ -41,48 +34,39 @@ public:
 
     /* for testing only */
     sf::RectangleShape m_rectangle;
-
-private:
-    int m_health;
-    int m_moveSpeed;
-    int m_damage;
-    int m_width;
-    int m_height;
 };
 
-class Player : public Entity
+class Player : public sf::Sprite, public Entity
 {
 private:
     sf::Texture spriteSheetTexture;
-    sf::Sprite playerSprite;
+    float movementSpeed;  // Constant movement speed
+
 public:
-    Player(int health, int moveSpeed, int damage, int width, int height)
-        : Entity(health, moveSpeed, damage, height, width) {
-    //------------------------------------------------------------------------------------   
+    Player()
+        : Entity(P_HP, E_W, E_H), movementSpeed(5.0f) {
+        //------------------------------------------------------------------------------------   
         //add player sprite
         if (!spriteSheetTexture.loadFromFile("./player/john_idle.png"))
         {
-            //error accesing sprite location
-        } 
+            //error accessing sprite location
+        }
         // Define the coordinates and size of the desired part of the tile sheet
         int tileX = 0;  // X coordinate of the tile within the tile sheet
         int tileY = 0;  // Y coordinate of the tile within the tile sheet
         int tileSize = 22;  // Size of each tile
 
         // Set the texture rectangle of the sprite to display the desired part of the tile sheet
-        playerSprite.setTexture(spriteSheetTexture);
-        playerSprite.setTextureRect(sf::IntRect(tileX, tileY, tileSize, tileSize));
+        setTexture(spriteSheetTexture);
+        setTextureRect(sf::IntRect(tileX, tileY, tileSize, tileSize));
         // Set the initial position, scale, or any other properties of the sprite
-        playerSprite.setPosition(0, 0);
-        
+        setPosition(0, 0);
+        //------------------------------------------------------------------------------------
     }
-    sf::Sprite& getPlayerSprite() {
-        return playerSprite;
-    }
-    //------------------------------------------------------------------------------------
 
     void move(sf::Vector2f direction) {
-        // Implement movement logic here
+        sf::Vector2f newPosition = getPosition() + (direction * movementSpeed);
+        setPosition(newPosition);
     }
 
     void jump() {
@@ -92,18 +76,19 @@ public:
     void shoot() {
         // Implement shooting logic here
     }
+
     void handleInput() {
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up)) {
-            move(sf::Vector2f(0, -getMoveSpeed()));
+            move(sf::Vector2f(0, -1));
         }
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Down)) {
-            move(sf::Vector2f(0, getMoveSpeed()));
+            move(sf::Vector2f(0, 1));
         }
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left)) {
-            move(sf::Vector2f(-getMoveSpeed(), 0));
+            move(sf::Vector2f(-1, 0));
         }
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right)) {
-            move(sf::Vector2f(getMoveSpeed(), 0));
+            move(sf::Vector2f(1, 0));
         }
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space)) {
             jump();
@@ -114,8 +99,8 @@ public:
 class Enemy : public Entity
 {
 public:
-    Enemy(int health, int moveSpeed, int damage, int width, int height)
-        : Entity(health, moveSpeed, damage, width, height) {}
+    Enemy(int health, int width, int height)
+        : Entity(health, width, height) {}
 
     void aiBehavior() {
         // Implement AI behavior here
@@ -130,8 +115,7 @@ public:
     }
 
     void run() {
-        Player player(P_HP, STARTX, STARTY, E_W, E_H);
-        
+        Player player;
 
         while (window.isOpen()) {
             sf::Event event;
@@ -146,14 +130,13 @@ public:
 
             window.clear();
 
-            window.draw(player.getPlayerSprite());
+            window.draw(player);
             window.display();
         }
     }
 
-
 private:
-    sf::RenderWindow window;    
+    sf::RenderWindow window;
 };
 
 int main() {
