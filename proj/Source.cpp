@@ -776,8 +776,6 @@ public:
     {
         sf::Time elapsedTime = clock.getElapsedTime();
         std::string elapsedTimeString = std::to_string(elapsedTime.asSeconds());
-        std::cout << "time" << elapsedTimeString << std::endl;
-
         timeToDisplay.setString(elapsedTimeString);
         window.draw(timeToDisplay);
     }
@@ -894,8 +892,8 @@ public:
                     enemySpawnClock.restart();
                 }
                 window.clear();
-                drawTime(time);
                 map.Draw(window);
+                drawTime(time);
                 drawHealth(player.getHealth());
                 window.draw(player);
                 for (const auto& enemy : enemies) {
@@ -931,6 +929,7 @@ public:
                         player.clearBullets();
                         player.respawn();
                         clock.restart();
+                        time.restart();
                         window.clear();
                         window.display();
                         mainmenutheme.play();
