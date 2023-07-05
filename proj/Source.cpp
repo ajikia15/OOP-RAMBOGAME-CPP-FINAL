@@ -54,11 +54,7 @@ public:
         sf::FloatRect otherBounds = other.getGlobalBounds();
         return thisBounds.intersects(otherBounds);
     }
-    bool isEnemyColliding(const Entity& other) const {
-        sf::FloatRect thisBounds = getGlobalBounds();
-        sf::FloatRect otherBounds = other.getGlobalBounds();
-        return thisBounds.intersects(otherBounds);
-    }
+
     void update(float deltaTime) {
         sf::Vector2f position = getPosition();
 
@@ -81,24 +77,21 @@ public:
         setPosition(position);
     }
 };
-    
+
 class Bullet : public Entity
 {
 private:
-    static sf::Texture bulletSheet;
+    sf::Texture spriteSheetTexture;
     float playerScale;
 public:
     Bullet(int x, int y, float scale)
         : Entity(1, 5, 10) {
         // Bullets have 1 HP and size 5x10
-        setPosition(x, y + E_H / 3); // adding to y because the bullet spawns a bit higher than the player's gun
+        setPosition(x, y + E_H / 2); // adding to y because the bullet spawns a bit higher than the player's gun
         playerScale = scale;
-        if (!bulletSheet.loadFromFile("./player/weapon_bullet_level2.png")) {
-            std::cout << "balls" << std::endl;
-        }
-        Bullet::setTexture(bulletSheet);
-        setTextureRect(sf::IntRect(0, 0, 18, 16));
-        setScale(E_W / 18.0f / 2, E_H / 16.0f / 2);
+        if (!spriteSheetTexture.loadFromFile("./player/john_idle.png"));
+        setTexture(spriteSheetTexture);
+        setTextureRect(sf::IntRect(0, 0, 26, 22));
     }
 
     void update(float deltaTime) {
@@ -118,18 +111,16 @@ public:
         }
     }
 };
-sf::Texture Bullet::bulletSheet;
 
 class Enemy : public Entity
 {
 private:
-    sf::Vector2f lastValidPosition;
-    static sf::Texture enemySheet;
+    sf::Texture spriteSheetTexture;
 public:
     Enemy(int health, int width, int height, const sf::Vector2f& spawnPosition)
         : Entity(health, width, height) {
         setPosition(spawnPosition);
-        if (!enemySheet.loadFromFile("./player/john_idle.png"))
+        if (!spriteSheetTexture.loadFromFile("./player/john_idle.png"))
         {
             std::cout << "pic not found" << std::endl;
         }
@@ -138,7 +129,7 @@ public:
         int tileY = 0;  // Y coordinate of the tile within the tile sheet
 
         // Set the texture rectangle of the sprite to display the desired part of the tile sheet
-        setTexture(enemySheet);
+        setTexture(spriteSheetTexture);
         setTextureRect(sf::IntRect(tileX, tileY, 26, 22));
         setScale(E_W / 26.0f, E_H / 22.0f);
 
@@ -148,32 +139,14 @@ public:
         // Implement AI behavior here
     }
 
-    void update(float deltaTime, const std::vector<Enemy>& enemies) {
+    void update(float deltaTime) {
         // Apply gravity to the the enemy
-
-        for (const auto& otherEnemy : enemies) {
-            if (isEnemyColliding(otherEnemy) && this != &otherEnemy) {
-                // Collision occurred with another enemy
-                setPosition(lastValidPosition); // Revert to the last known valid position, needs improvement i guess
-                if (isEnemyColliding(otherEnemy) && this != &otherEnemy)
-                {
-
-                }
-                std::cout << "enemys havig sex" << std::endl;
-                break; 
-            }
-            else {
-                lastValidPosition = getPosition();
-                velocity.y += gravity;
-
-            }
-        }
+        velocity.y += gravity;
 
         // Update the enemys's position based on velocity
         Entity::update(deltaTime);
     }
 };
-sf::Texture Enemy::enemySheet;
 
 class Player : public Entity
 {
@@ -425,7 +398,7 @@ public:
             i++;
         } while (i < numSprites);
     }
-
+    
     bool isColliding(const Player& player) const {
         // Check if the player's bounding box intersects with the map sprite's bounding box
         return backgroundSprite.getGlobalBounds().intersects(player.getGlobalBounds());
@@ -443,24 +416,31 @@ private:
     std::vector<Enemy> enemies;
     std::vector<sf::Vector2f> spawnPoints;
 
+
 public:
     Game() : window(sf::VideoMode(MAX_X, MAX_Y), "SEX") {
         window.setFramerateLimit(FPS);
 
         // spawn points on the right side
         spawnPoints.push_back(sf::Vector2f(E_W, MAX_Y - E_H));   // bottom
-        spawnPoints.push_back(sf::Vector2f(E_W, MAX_Y - E_H - 200));
+        spawnPoints.push_back(sf::Vector2f(E_W, MAX_Y - E_H - 50));
 
         //spawn points on the left side
         spawnPoints.push_back(sf::Vector2f(MAX_X - E_W, MAX_Y - E_H)); // bottom
-        spawnPoints.push_back(sf::Vector2f(MAX_X - E_W, MAX_Y - E_H - 200));
+        spawnPoints.push_back(sf::Vector2f(MAX_X - E_W, MAX_Y - E_H - 50));
 
     }
 
     void run() {
         Player player;
         Map map;
+
+
         map.Load();
+        
+        
+
+
         sf::Clock clock;
         while (window.isOpen()) {
             while (player.getHealth() > 0)
@@ -485,7 +465,7 @@ public:
                 float deltaTime = clock.restart().asSeconds();
                 player.update(deltaTime);
                 map.Update(deltaTime);
-
+                
                 if (enemySpawnClock.getElapsedTime() >= enemySpawnInterval) {
                     int spawnIndex = std::rand() % spawnPoints.size();
                     sf::Vector2f spawnPosition = spawnPoints[spawnIndex];
@@ -496,14 +476,14 @@ public:
                 // Update enemies
                 for (auto it = enemies.begin(); it != enemies.end(); ) {
                     auto& enemy = *it;
-                    enemy.update(deltaTime, enemies);
+                    enemy.update(deltaTime);
 
                     if (enemy.isColliding(player)) {
                         std::cout << "gay" << std::endl;
                         player.setHealth(player.getHealth() - 1);
                         enemy.setHealth(enemy.getHealth() - 1);
                     }
-
+                    
                     for (auto bulletIt = player.getBullets().begin(); bulletIt != player.getBullets().end(); ) {
                         auto& bullet = *bulletIt;
                         if (bullet.isColliding(enemy)) {
@@ -525,7 +505,11 @@ public:
                     else {
                         ++it;
                     }
+
+
+                    
                 }
+                
                 window.clear();
                 map.Draw(window);
                 window.draw(player);
