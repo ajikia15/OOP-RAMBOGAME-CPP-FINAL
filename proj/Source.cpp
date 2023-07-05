@@ -1,4 +1,5 @@
 #include <SFML/Graphics.hpp>
+#include <SFML/Audio.hpp>
 #include <iostream>
 
 #define E_H 65             // ENTITY HEIGHT
@@ -6,6 +7,7 @@
 #define EN_W 65
 #define E_SP 300.0f        // ENTITY SPEED
 #define BLT_SP 20.0f       // BULLET SPEED
+#define E_VEL 1.0f         // ENTITY VELOCITY
 
 #define P_HP 5             // PLAYER STARTING HP
 
@@ -14,8 +16,8 @@
 
 #define STARTX 0
 #define STARTY 0
-#define MAX_X 1024
-#define MAX_Y 768
+#define MAX_X 1920
+#define MAX_Y 1080
 
 #define FPS 120
 
@@ -140,7 +142,6 @@ private:
     sf::Texture jumpSpriteSheetTexture;
     //..........................................................................................
 
-
     bool isJumping;        // Flag to track if the player is jumping
     float jumpVelocity;    // Velocity of the player during jumping
     int fireDelay;
@@ -156,6 +157,9 @@ private:
     int frameHeight;
     float animationSpeed;
     sf::Clock animationClock;
+
+    sf::Sound sound;
+    sf::SoundBuffer fire_sound;
     //..........................................................................................
 
 public:
@@ -167,18 +171,18 @@ public:
         //..........................................................................................
         if (!idleSpriteSheetTexture.loadFromFile("./player/john_idle.png"))
         {
-            // Handle error loading idle sprite sheet
         }
 
         if (!moveSpriteSheetTexture.loadFromFile("./player/john_run.png"))
         {
-            // Handle error loading move sprite sheet
         }
         if (!jumpSpriteSheetTexture.loadFromFile("./player/john_jump.png"))
         {
-            // Handle error loading jump sprite sheet
         }
         //..........................................................................................
+        if (!fire_sound.loadFromFile("./sounds/fire.ogg"))
+        {
+        }
         int tileSize = 22;
         bullets = new std::vector<Bullet>();
 
@@ -194,6 +198,7 @@ public:
     }
     void fire() {
         if (fireDelay >= 30) { // If enough time has passed since the last shot
+            sound.setBuffer(fire_sound);
             // Calculate the bullet's initial position based on the player's direction
             sf::Vector2f bulletPosition;
             if (getScale().x > 0) {
@@ -209,6 +214,7 @@ public:
             bullets->push_back(Bullet(bulletPosition.x, bulletPosition.y, getScale().x));
             //std::cout << "firedelay" << std::endl;
             fireDelay = 0;
+            sound.play();
         }
     }
     void clearBullets()
@@ -243,14 +249,14 @@ public:
         //..........................................................................................
 
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left)) {
-            velocity.x = -1.0f;
+            velocity.x = -E_VEL - 0.1f;
             setScale(-E_W / 26.0f, E_H / 22.0f);
             setOrigin(E_W / 2 - E_W / 26.0f, 0); // karoche marjvniv tu midiodi da marcxniv gauxvdevdi an piriqit ucnaurad iyo dzaan da bevri kombinacia vcade
             // sabolood aseti gamoiyureba yvelaze kargad rato ar vici ar sheexo
 
         }
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right)) {
-            velocity.x = 1.0f;
+            velocity.x = E_VEL - 0.1f;
             setScale(E_W / 26.0f, E_H / 22.0f);
             setOrigin(E_W / 26.0f - E_W / 4, 0); // esec
 
@@ -358,14 +364,14 @@ public:
 
         if (!enemySheetMove.loadFromFile("./enemy_sheet_move.png")) {
             std::cout << "Failed to load enemy move texture!" << std::endl;
-        }
+        }    
         // Define the coordinates and size of the desired part of the tile sheet
         int tileX = 0;  // X coordinate of the tile within the tile sheet
         int tileY = 0;  // Y coordinate of the tile within the tile sheet
 
         // Set the texture rectangle of the sprite to display the desired part of the tile sheet
 
-        setTextureRect(sf::IntRect(tileX, tileY, 170, 102));
+        setTextureRect(sf::IntRect(tileX, tileY, 102, 102));
 
     }
 
@@ -391,12 +397,14 @@ public:
 
         // Adjust the horizontal velocity based on the direction towards the player
         if (direction.x > 0) {
-            velocity.x = 1.0f;  // Move right
+            velocity.x = E_VEL;  // Move right
             setTexture(enemySheetMove);  // Set the moving animation texture
+            setScale(1, 1);
         }
         else if (direction.x < 0) {
-            velocity.x = -1.0f; // Move left
+            velocity.x = -E_VEL; // Move left
             setTexture(enemySheetMove);  // Set the moving animation texture
+            setScale(-1, 1);
         }
         else {
             velocity.x = 0.0f;  // Stop moving horizontally if player is in line
@@ -501,17 +509,42 @@ public:
             player.setPosition(playerPosition);
         }
     }
+    
+    
+    void addJungleTree(sf::RenderWindow& window,int x,int y){
+        sf::Vector2f treePosition1(x, y);  // Adjust the position as needed
+        jungleTreeSprite.setPosition(treePosition1);
+        jungleTreeSprite.setScale(5,5);
+        window.draw(jungleTreeSprite);
+    }
+
+
     void Draw(sf::RenderWindow& window) {
 
         window.draw(backgroundSprite);
         window.draw(backgroundSprite1);
 
 
-        int numSprites = MAX_X / 20; // Number of sprites to print
+
+        
+        
+        int numSprites = 30; // Number of sprites to print
         int spacing = 50; // Spacing between each sprite
         int i = 0;
-
+        int spacingBetweenP = 200;
+        int spacingheight = 270;
         sprites.clear(); // Clear the vector before adding new sprites
+        
+        //loop for trees 
+        do{
+            if(i==0||i==10||i==29)
+            addJungleTree(window, i * spacing, sprite.getPosition().y - spacingheight);
+            i++;
+        } while (i < numSprites);
+
+
+        i = 0;
+        numSprites = MAX_X / 20;
         //lower ground
         do {
             sf::Sprite currentSprite = sprite; // Create a copy of the sprite
@@ -523,6 +556,9 @@ public:
             currentSprite.setPosition(posX, posY);
             window.draw(currentSprite);
             sprites.push_back(currentSprite);
+            
+            
+
 
             i++;
 
@@ -537,7 +573,7 @@ public:
 
             // Adjust the position of the current sprite
             int posX = sprite.getPosition().x + (i * spacing);
-            int posY = 300;
+            int posY = MAX_Y / 2;
 
             currentSprite.setPosition(posX, posY);
             window.draw(currentSprite);
@@ -548,7 +584,7 @@ public:
 
 
         i = 0;
-        numSprites = 9;
+        numSprites = 3;
         //middle right ground
         do {
             sf::Sprite currentSprite = sprite; // Create a copy of the sprite
@@ -556,7 +592,7 @@ public:
             int posX = MAX_X;
             // Adjust the position of the current sprite
             posX = posX - (i * spacing);
-            int posY = 500;
+            int posY = MAX_Y - spacingBetweenP-spacing;
 
             currentSprite.setPosition(posX, posY);
             window.draw(currentSprite);
@@ -565,7 +601,7 @@ public:
         } while (i < numSprites);
 
         i = 0;
-        numSprites = 6;
+        numSprites = 5;
         //top right ground
         do {
             sf::Sprite currentSprite = sprite; // Create a copy of the sprite
@@ -573,7 +609,7 @@ public:
             int posX = MAX_X;
             // Adjust the position of the current sprite
             posX = posX - (i * spacing);
-            int posY = 200;
+            int posY = MAX_Y / 2 - spacingBetweenP;
 
             currentSprite.setPosition(posX, posY);
             window.draw(currentSprite);
@@ -581,7 +617,7 @@ public:
             i++;
         } while (i < numSprites);
     }
-    //----------------------------------------------------------------------------------------------
+    
     sf::Vector2f getPlayerPositionOnSprite(const Player& player) const {
         for (const sf::Sprite& currentSprite : sprites) {
             if (currentSprite.getGlobalBounds().intersects(player.getGlobalBounds())) {
@@ -595,6 +631,7 @@ public:
         // If there is no collision, return an empty position
         return sf::Vector2f(-1.f, -1.f);
     }
+    
     sf::Vector2f getEnemyPositionOnSprite(const Enemy& enemy) const {
         for (const sf::Sprite& currentSprite : sprites) {
             if (currentSprite.getGlobalBounds().intersects(enemy.getGlobalBounds())) {
@@ -608,7 +645,6 @@ public:
         // If there is no collision, return an empty position
         return sf::Vector2f(-1.f, -1.f);
     }
-    //---------------------------------------------------------------------------------------------
 };
 class Game
 {
@@ -625,30 +661,46 @@ private:
     int selectedOption;
     sf::Font titleFont;
     sf::Font mainFont;
+
+
+    sf::Music mainmenutheme;
+    sf::SoundBuffer death_sound;
+    sf::SoundBuffer game_over_sound;
+    sf::SoundBuffer menuselect_sound;
+    sf::SoundBuffer menuswitch_sound;
+    sf::SoundBuffer damage_sound;
+    sf::SoundBuffer hit_sound;
+
 public:
     Game() : window(sf::VideoMode(MAX_X, MAX_Y), "SEX") {
+        window.setFramerateLimit(FPS);
+
         state = MAINMENU;
         titleFont.loadFromFile("./fonts/28 Days Later.ttf");
         mainFont.loadFromFile("./fonts/PressStart2P-Regular.ttf");
-
+        mainmenutheme.openFromFile("./sounds/mainmenutheme.ogg");
+        death_sound.loadFromFile("./sounds/death.ogg");
+        game_over_sound.loadFromFile("./sounds/game_over.ogg");
+        menuselect_sound.loadFromFile("./sounds/menuselect.ogg");
+        menuswitch_sound.loadFromFile("./sounds/menuswitch.ogg");
+        damage_sound.loadFromFile("./sounds/damage.ogg");
+        hit_sound.loadFromFile("./sounds/hit.ogg");
         createText();
 
-        window.setFramerateLimit(FPS);
-
-        // spawn points on the right side
+        // spawn points on the left side
         spawnPoints.push_back(sf::Vector2f(E_W, MAX_Y - E_H));   // bottom
-        spawnPoints.push_back(sf::Vector2f(E_W, MAX_Y - E_H - 200));
+        spawnPoints.push_back(sf::Vector2f(E_W*2, MAX_Y /2 - 100));
 
-        //spawn points on the left side
+        //spawn points on the right side
         spawnPoints.push_back(sf::Vector2f(MAX_X - E_W, MAX_Y - E_H)); // bottom
-        spawnPoints.push_back(sf::Vector2f(MAX_X - E_W, MAX_Y - E_H - 200));
+        spawnPoints.push_back(sf::Vector2f(MAX_X - E_W, MAX_Y -350));
+        spawnPoints.push_back(sf::Vector2f(MAX_X - E_W, MAX_Y /2 -300 ));
+
 
     }
     void createText()
     {
-
         selectedOption = -1;
-
         menuOptions[0].setString("Play");
         menuOptions[1].setString("Guide");
         menuOptions[2].setString("Exit");
@@ -680,7 +732,7 @@ public:
     }
     void drawGameOverText()
     {
-        for (int i = MAINMENUTEXTCOUNT; i< MAINMENUTEXTCOUNT + GAMEOVERTEXTCOUNT; i++)
+        for (int i = MAINMENUTEXTCOUNT; i < MAINMENUTEXTCOUNT + GAMEOVERTEXTCOUNT; i++)
         {
             window.draw(menuOptions[i]);
         }
@@ -694,27 +746,35 @@ public:
         return state;
     }
     void run() {
+        sf::Sound sound;
         Player player;
         Map map;
         map.Load();
         sf::Clock clock;
+        mainmenutheme.play();
         while (window.isOpen() && getGameState() != END) {
             while (getGameState() == MAINMENU)
             {
                 sf::Event event;
-                std::cout << selectedOption << std::endl;
+                //std::cout << selectedOption << std::endl;
                 while (window.pollEvent(event)) {
                     if (event.type == sf::Event::Closed) {
                         window.close();
                     }
                     if (sf::Keyboard::isKeyPressed(sf::Keyboard::Down)) {
+                        sound.setBuffer(menuselect_sound);
                         selectedOption == -1 ? selectedOption = 0 : selectedOption != 2 ? selectedOption++ : 0; // prosta lamazi sintaqsebia tu ver gaige mitxari
+                        sound.play();
                     }
                     if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up)) {
-                        selectedOption == -1 ? selectedOption=0 : selectedOption != 0 ? selectedOption-- : 2;  // kai araa lamazi mara asworebs
+                        sound.setBuffer(menuselect_sound);
+                        selectedOption == -1 ? selectedOption = 0 : selectedOption != 0 ? selectedOption-- : 2;  // kai araa lamazi mara asworebs
+                        sound.play();
                     }
-                    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Enter) && selectedOption>-1) {
-                        setGameState(selectedOption+1);
+                    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Enter) && selectedOption > -1) {
+                        sound.setBuffer(menuswitch_sound);
+                        setGameState(selectedOption + 1);
+                        sound.play();
                         window.clear();
                         break;
                     }
@@ -722,7 +782,7 @@ public:
                         window.close();
                     }
                 }
-                
+
                 window.clear();
                 map.Draw(window);
                 drawMainMenuText();
@@ -730,7 +790,7 @@ public:
             }
             while (getGameState() == GAME)
             {
-                
+                mainmenutheme.stop();
                 sf::Event event;
                 while (window.pollEvent(event)) {
                     if (event.type == sf::Event::Closed) {
@@ -752,12 +812,7 @@ public:
 
                 //--------------------------------------------------------------------------------------------------
 
-                if (enemySpawnClock.getElapsedTime() >= enemySpawnInterval) {
-                    int spawnIndex = std::rand() % spawnPoints.size();
-                    sf::Vector2f spawnPosition = spawnPoints[spawnIndex];
-                    enemies.push_back(Enemy(EN_HP, E_W, E_H, spawnPosition));
-                    enemySpawnClock.restart();
-                }
+
 
                 // Update enemies
                 for (auto it = enemies.begin(); it != enemies.end(); ) {
@@ -769,16 +824,20 @@ public:
                     }
                     if (enemy.isColliding(player)) {
                         //std::cout << "gay" << std::endl;
+                        sound.setBuffer(damage_sound);
                         player.setHealth(player.getHealth() - 1);
                         enemy.setHealth(enemy.getHealth() - 1);
+                        sound.play();
                     }
 
                     for (auto bulletIt = player.getBullets().begin(); bulletIt != player.getBullets().end(); ) {
                         auto& bullet = *bulletIt;
                         if (bullet.isColliding(enemy)) {
                             //std::cout << "Collision with enemy" << std::endl;
+                            sound.setBuffer(hit_sound);
                             bullet.setHealth(0);
                             enemy.setHealth(enemy.getHealth() - 1);
+                            sound.play();
                         }
 
                         if (bullet.getHealth() <= 0) {
@@ -795,11 +854,17 @@ public:
                         ++it;
                     }
                 }
+                if (enemySpawnClock.getElapsedTime() >= enemySpawnInterval) {
+                    int spawnIndex = std::rand() % spawnPoints.size();
+                    sf::Vector2f spawnPosition = spawnPoints[spawnIndex];
+                    enemies.push_back(Enemy(EN_HP, E_W, E_H, spawnPosition));
+                    enemySpawnClock.restart();
+                }
                 window.clear();
                 map.Draw(window);
                 window.draw(player);
                 for (const auto& enemy : enemies) {
-                    
+
                     window.draw(enemy);
                 }
                 for (const auto& bullet : player.getBullets()) {
@@ -807,13 +872,15 @@ public:
                 }
                 window.display();
                 if (player.isDead()) {
+                    sound.setBuffer(game_over_sound);
+                    sound.play();
                     setGameState(LOST);
                     window.clear();
                     window.display();
                     break;
                 }
             }
-            
+
             while (getGameState() == LOST)
             {
                 sf::Event event;
@@ -823,7 +890,9 @@ public:
                     }
                     if (sf::Keyboard::isKeyPressed(sf::Keyboard::X))
                     {
-                        std::cout << getGameState() << std::endl;
+                        //std::cout << getGameState() << std::endl;
+                        sound.setBuffer(menuswitch_sound);
+                        sound.play();
                         setGameState(MAINMENU);
                         enemies.clear();
                         player.clearBullets();
@@ -831,8 +900,8 @@ public:
                         clock.restart();
                         window.clear();
                         window.display();
+                        mainmenutheme.play();
                         break;
-                        
                     }
                 }
                 window.clear();
@@ -842,6 +911,7 @@ public:
             }
             while (getGameState() == END)
             {
+                mainmenutheme.stop();
                 window.close();
             }
         }
