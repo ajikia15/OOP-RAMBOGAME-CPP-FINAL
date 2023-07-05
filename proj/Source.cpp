@@ -77,11 +77,11 @@ public:
         setPosition(position);
     }
 };
-    
+
 class Bullet : public Entity
 {
 private:
-    static sf::Texture bulletSheet;
+    sf::Texture spriteSheetTexture;
     float playerScale;
 public:
     Bullet(int x, int y, float scale)
@@ -89,10 +89,9 @@ public:
         // Bullets have 1 HP and size 5x10
         setPosition(x, y + E_H / 2); // adding to y because the bullet spawns a bit higher than the player's gun
         playerScale = scale;
-        if (!bulletSheet.loadFromFile("./player/weapon_bullet.png")) {
-            std::cout << "balls" << std::endl;
-        }
-        Bullet::setTexture(bulletSheet);
+        if (!spriteSheetTexture.loadFromFile("./player/john_idle.png"));
+        setTexture(spriteSheetTexture);
+        setTextureRect(sf::IntRect(0, 0, 26, 22));
     }
 
     void update(float deltaTime) {
@@ -112,17 +111,16 @@ public:
         }
     }
 };
-sf::Texture Bullet::bulletSheet;
 
 class Enemy : public Entity
 {
 private:
-    static sf::Texture enemySheet;
+    sf::Texture spriteSheetTexture;
 public:
     Enemy(int health, int width, int height, const sf::Vector2f& spawnPosition)
         : Entity(health, width, height) {
         setPosition(spawnPosition);
-        if (!enemySheet.loadFromFile("./player/john_idle.png"))
+        if (!spriteSheetTexture.loadFromFile("./player/john_idle.png"))
         {
             std::cout << "pic not found" << std::endl;
         }
@@ -131,7 +129,7 @@ public:
         int tileY = 0;  // Y coordinate of the tile within the tile sheet
 
         // Set the texture rectangle of the sprite to display the desired part of the tile sheet
-        setTexture(enemySheet);
+        setTexture(spriteSheetTexture);
         setTextureRect(sf::IntRect(tileX, tileY, 26, 22));
         setScale(E_W / 26.0f, E_H / 22.0f);
 
@@ -149,7 +147,6 @@ public:
         Entity::update(deltaTime);
     }
 };
-sf::Texture Enemy::enemySheet;
 
 class Player : public Entity
 {
@@ -401,12 +398,19 @@ public:
             i++;
         } while (i < numSprites);
     }
+    //----------------------------------------------------------------------------------------------
+    sf::Vector2f getPlayerPositionOnSprite(const Player& player) const {
+        if (sprite.getGlobalBounds().intersects(player.getGlobalBounds())) {
+            sf::FloatRect intersection;
+            sprite.getGlobalBounds().intersects(player.getGlobalBounds(), intersection);
+            float posY = intersection.top - player.getGlobalBounds().height;
+            return sf::Vector2f(player.getPosition().x, posY);
+        }
 
-    bool isColliding(const Player& player) const {
-        // Check if the player's bounding box intersects with the map sprite's bounding box
-        return backgroundSprite.getGlobalBounds().intersects(player.getGlobalBounds());
+        // If there is no collision, return an empty position
+        return sf::Vector2f(-1.f, -1.f);
     }
-
+    //---------------------------------------------------------------------------------------------
 };
 
 class Game
@@ -418,6 +422,7 @@ private:
     sf::Time enemySpawnInterval = sf::milliseconds(EN_SPWN);
     std::vector<Enemy> enemies;
     std::vector<sf::Vector2f> spawnPoints;
+
 
 public:
     Game() : window(sf::VideoMode(MAX_X, MAX_Y), "SEX") {
@@ -439,22 +444,15 @@ public:
 
 
         map.Load();
-
-
+        
+        
 
 
         sf::Clock clock;
         while (window.isOpen()) {
             while (player.getHealth() > 0)
             {
-                // Check for collision between the map sprite and the player sprite
-                if (map.isColliding(player)) {
-                    // Collision occurred
-                    std::cout << "Collision between map and player" << std::endl;
-                    // Handle the collision as desired (e.g., reduce player health, stop player movement, etc.)
-                }
-
-
+               
                 sf::Event event;
                 while (window.pollEvent(event)) {
                     if (event.type == sf::Event::Closed) {
@@ -466,8 +464,14 @@ public:
                 // Update game state here
                 float deltaTime = clock.restart().asSeconds();
                 player.update(deltaTime);
-                map.Update(deltaTime);
-
+                //-------------------------------------------------------------------------------for player to stand 
+                sf::Vector2f playerPosition = map.getPlayerPositionOnSprite(player);
+                if (playerPosition.x != -1.f && playerPosition.y != -1.f) {
+                    // Set the player's position to the determined position on the sprite
+                    player.setPosition(playerPosition);
+                }
+                //--------------------------------------------------------------------------------------------------
+                
                 if (enemySpawnClock.getElapsedTime() >= enemySpawnInterval) {
                     int spawnIndex = std::rand() % spawnPoints.size();
                     sf::Vector2f spawnPosition = spawnPoints[spawnIndex];
@@ -485,7 +489,7 @@ public:
                         player.setHealth(player.getHealth() - 1);
                         enemy.setHealth(enemy.getHealth() - 1);
                     }
-
+                    
                     for (auto bulletIt = player.getBullets().begin(); bulletIt != player.getBullets().end(); ) {
                         auto& bullet = *bulletIt;
                         if (bullet.isColliding(enemy)) {
@@ -507,7 +511,11 @@ public:
                     else {
                         ++it;
                     }
+
+
+                    
                 }
+                
                 window.clear();
                 map.Draw(window);
                 window.draw(player);
