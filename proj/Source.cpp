@@ -1,7 +1,7 @@
 #include <SFML/Graphics.hpp>
 #include <iostream>
 
-#define E_H 60             // ENTITY HEIGHT
+#define E_H 65             // ENTITY HEIGHT
 #define E_W 55             // ENTITY WIDTH
 #define E_SP 200.0f        // ENTITY SPEED
 #define BLT_SP 20.0f       // BULLET SPEED
@@ -80,7 +80,7 @@ public:
     Bullet(int x, int y, float scale)
         : Entity(1, 5, 10) { 
         // Bullets have 1 HP and size 5x10
-        setPosition(x, y);
+        setPosition(x, y + E_H/2); // adding to y because the bullet spawns a bit higher than the player's gun
         playerScale = scale;
         if (!spriteSheetTexture.loadFromFile("./player/john_idle.png"));
         setTexture(spriteSheetTexture);
@@ -169,11 +169,14 @@ public:
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left)) {
             velocity.x = -1.0f;
             setScale(-E_W / 26.0f, E_H / 22.0f);
+            setOrigin(E_W / 2 - E_W / 26.0f, 0); // karoche marjvniv tu midiodi da marcxniv gauxvdevdi an piriqit ucnaurad iyo dzaan da bevri kombinacia vcade
+            // sabolood aseti gamoiyureba yvelaze kargad rato ar vici ar sheexo
 
         }
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right)) {
             velocity.x = 1.0f;
             setScale(E_W / 26.0f, E_H / 22.0f);
+            setOrigin(E_W / 26.0f - E_W / 4, 0); // esec
 
         }
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space)) {
