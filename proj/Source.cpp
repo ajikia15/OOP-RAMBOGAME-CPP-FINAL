@@ -54,11 +54,7 @@ public:
         sf::FloatRect otherBounds = other.getGlobalBounds();
         return thisBounds.intersects(otherBounds);
     }
-    bool isEnemyColliding(const Entity& other) const {
-        sf::FloatRect thisBounds = getGlobalBounds();
-        sf::FloatRect otherBounds = other.getGlobalBounds();
-        return thisBounds.intersects(otherBounds);
-    }
+
     void update(float deltaTime) {
         sf::Vector2f position = getPosition();
 
@@ -91,14 +87,12 @@ public:
     Bullet(int x, int y, float scale)
         : Entity(1, 5, 10) {
         // Bullets have 1 HP and size 5x10
-        setPosition(x, y + E_H / 3); // adding to y because the bullet spawns a bit higher than the player's gun
+        setPosition(x, y + E_H / 2); // adding to y because the bullet spawns a bit higher than the player's gun
         playerScale = scale;
-        if (!bulletSheet.loadFromFile("./player/weapon_bullet_level2.png")) {
+        if (!bulletSheet.loadFromFile("./player/weapon_bullet.png")) {
             std::cout << "balls" << std::endl;
         }
         Bullet::setTexture(bulletSheet);
-        setTextureRect(sf::IntRect(0, 0, 18, 16));
-        setScale(E_W / 18.0f / 2, E_H / 16.0f / 2);
     }
 
     void update(float deltaTime) {
@@ -123,7 +117,6 @@ sf::Texture Bullet::bulletSheet;
 class Enemy : public Entity
 {
 private:
-    sf::Vector2f lastValidPosition;
     static sf::Texture enemySheet;
 public:
     Enemy(int health, int width, int height, const sf::Vector2f& spawnPosition)
@@ -144,36 +137,14 @@ public:
 
     }
 
-    void update(float deltaTime, const std::vector<Enemy>& enemies, const sf::Vector2f& playerPosition) {
+    void aiBehavior() {
+        // Implement AI behavior here
+    }
+
+    void update(float deltaTime) {
         // Apply gravity to the the enemy
+        velocity.y += gravity;
 
-        for (const auto& otherEnemy : enemies) {
-            if (isEnemyColliding(otherEnemy) && this != &otherEnemy) {
-                // Collision occurred with another enemy
-                setPosition(lastValidPosition); // Revert to the last known valid position, needs improvement i guess
-                if (isEnemyColliding(otherEnemy) && this != &otherEnemy)
-                {
-
-                }
-                std::cout << "enemys havig sex" << std::endl;
-                break; 
-            }
-            else {
-                lastValidPosition = getPosition();
-                velocity.y += gravity;
-
-            }
-        }
-        sf::Vector2f direction = playerPosition - getPosition();
-        if (direction.x > 0) {
-            velocity.x = 1.0f;  // Move right
-        }
-        else if (direction.x < 0) {
-            velocity.x = -1.0f; // Move left
-        }
-        else {
-            velocity.x = 0.0f;  // Stop moving horizontally if player is in line
-        }
         // Update the enemys's position based on velocity
         Entity::update(deltaTime);
     }
@@ -454,18 +425,24 @@ public:
 
         // spawn points on the right side
         spawnPoints.push_back(sf::Vector2f(E_W, MAX_Y - E_H));   // bottom
-        spawnPoints.push_back(sf::Vector2f(E_W, MAX_Y - E_H - 200));
+        spawnPoints.push_back(sf::Vector2f(E_W, MAX_Y - E_H - 50));
 
         //spawn points on the left side
         spawnPoints.push_back(sf::Vector2f(MAX_X - E_W, MAX_Y - E_H)); // bottom
-        spawnPoints.push_back(sf::Vector2f(MAX_X - E_W, MAX_Y - E_H - 200));
+        spawnPoints.push_back(sf::Vector2f(MAX_X - E_W, MAX_Y - E_H - 50));
 
     }
 
     void run() {
         Player player;
         Map map;
+
+
         map.Load();
+
+
+
+
         sf::Clock clock;
         while (window.isOpen()) {
             while (player.getHealth() > 0)
@@ -501,7 +478,7 @@ public:
                 // Update enemies
                 for (auto it = enemies.begin(); it != enemies.end(); ) {
                     auto& enemy = *it;
-                    enemy.update(deltaTime, enemies, player.getPosition());
+                    enemy.update(deltaTime);
 
                     if (enemy.isColliding(player)) {
                         std::cout << "gay" << std::endl;
