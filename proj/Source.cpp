@@ -13,17 +13,17 @@
 #define P_HP 5             // PLAYER STARTING HP
 
 #define EN_HP 1            // ENEMY STARTING HP 
-#define EN_SPWN  600          // ENEMY SPAWN INTERVAL (in seconds)
+#define EN_SPWN  400          // ENEMY SPAWN INTERVAL (in seconds)
 
 #define STARTX 0
 #define STARTY 0
-#define MAX_X 1440
-#define MAX_Y 860
+#define MAX_X 1920
+#define MAX_Y 1080
 
 #define FPS 120
 
 #define MAINMENU 0
-#define TITLE "RAMBO"
+#define TITLE "RAMBO FROM TELEVIZORI"
 #define GAME 1
 #define GUIDE 2
 #define END 3
@@ -444,9 +444,7 @@ private:
 public:
     Map() :
         TileW(26), TileH(22), TotalW(0), TotalH(0), Entity(1, 5, 10)
-    {
-    }
-    void Initialize() {};
+    {}
 
     void Load() {
         if (tileSheetTexture.loadFromFile("./tileset.png")) {
@@ -474,9 +472,7 @@ public:
             jungleTreeSprite.setScale(3, 3);
         }
     }
-
-
-    void Update(float deltatime, Player& player) {
+    void Update(Player& player) {
         // Check for collision between player and sprites
         sf::Vector2f playerPosition = getPlayerPositionOnSprite(player);
 
@@ -486,22 +482,16 @@ public:
         }
     }
 
-
     void addJungleTree(sf::RenderWindow& window, int x, int y) {
         sf::Vector2f treePosition1(x, y);  // Adjust the position as needed
         jungleTreeSprite.setPosition(treePosition1);
         jungleTreeSprite.setScale(5, 5);
         window.draw(jungleTreeSprite);
     }
-
-
     void Draw(sf::RenderWindow& window) {
 
         window.draw(backgroundSprite);
         window.draw(backgroundSprite1);
-
-
-
 
 
         int numSprites = 30; // Number of sprites to print
@@ -586,7 +576,6 @@ public:
             i++;
         } while (i < numSprites);
     }
-
     sf::Vector2f getPlayerPositionOnSprite(const Player& player) const {
         for (const sf::Sprite& currentSprite : sprites) {
             if (currentSprite.getGlobalBounds().intersects(player.getGlobalBounds())) {
@@ -651,7 +640,9 @@ public:
         state = MAINMENU;
         loadFiles();
         createText();
-
+        createStartPoints();
+    }
+    void createStartPoints() {
         // spawn points on the left side
         spawnPoints.push_back(sf::Vector2f(E_W, MAX_Y - E_H));   // bottom
         spawnPoints.push_back(sf::Vector2f(E_W * 2, MAX_Y / 2 - 100));
@@ -661,7 +652,6 @@ public:
         spawnPoints.push_back(sf::Vector2f(MAX_X - E_W, MAX_Y - E_H)); // bottom
         spawnPoints.push_back(sf::Vector2f(MAX_X - E_W, MAX_Y - 350));
         spawnPoints.push_back(sf::Vector2f(MAX_X - E_W, MAX_Y / 2 - 300));
-
 
     }
     void loadFiles()
@@ -702,8 +692,8 @@ public:
         guide[5].setString("Don't stay too long on the platforms, it's slippery!");
         guide[6].setString("Press X");
         timeToDisplay.setFont(mainFont);
-        timeToDisplay.setCharacterSize(50);
-        timeToDisplay.setPosition(MAX_X - 100, 10);
+        timeToDisplay.setCharacterSize(40);
+        timeToDisplay.setPosition(MAX_X - 200, 10);
         for (int i = 0; i < TEXTCOUNT; i++)
         {
             menuOptions[i].setFont(mainFont);
@@ -766,6 +756,13 @@ public:
         timeToDisplay.setString(elapsedTimeString);
         window.draw(timeToDisplay);
     }
+    void moveDownMenu() {
+        selectedOption == -1 ? selectedOption = 0 : selectedOption != 2 ? selectedOption++ : 0; // prosta lamazi sintaqsebia tu ver gaige mitxari
+    }
+    void moveUpMenu()
+    {
+        selectedOption == -1 ? selectedOption = 0 : selectedOption != 0 ? selectedOption-- : 2;  // kai araa lamazi mara asworebs
+    }
     void run() {
         sf::Sound sound;
         Player player;
@@ -785,12 +782,12 @@ public:
                     }
                     if (sf::Keyboard::isKeyPressed(sf::Keyboard::Down)) {
                         sound.setBuffer(menuselect_sound);
-                        selectedOption == -1 ? selectedOption = 0 : selectedOption != 2 ? selectedOption++ : 0; // prosta lamazi sintaqsebia tu ver gaige mitxari
+                        moveDownMenu();
                         sound.play();
                     }
                     if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up)) {
                         sound.setBuffer(menuselect_sound);
-                        selectedOption == -1 ? selectedOption = 0 : selectedOption != 0 ? selectedOption-- : 2;  // kai araa lamazi mara asworebs
+                        moveUpMenu();
                         sound.play();
                     }
                     if (sf::Keyboard::isKeyPressed(sf::Keyboard::Enter) && selectedOption > -1) {
@@ -812,6 +809,9 @@ public:
             }
             while (getGameState() == GAME)
             {
+                float deltaTime = clock.restart().asSeconds();
+                player.update(deltaTime);
+                map.Update(player);
                 mainmenutheme.stop();
                 sf::Event event;
                 while (window.pollEvent(event)) {
@@ -821,11 +821,8 @@ public:
                     player.handleInput();
                 }
 
-                // Update game state here
-                float deltaTime = clock.restart().asSeconds();
-                player.update(deltaTime);
-                map.Update(deltaTime, player);
-                //-------------------------------------------------------------------------------for player to stand 
+                
+                //---------------------------------------for player to stand--------------------------------------- 
                 sf::Vector2f playerPosition = map.getPlayerPositionOnSprite(player);
                 if (playerPosition.x != -1.f && playerPosition.y != -1.f) {
                     // Set the player's position to the determined position on the sprite
@@ -841,7 +838,6 @@ public:
                         enemy.setPosition(enemyPosition);
                     }
                     if (enemy.isColliding(player)) {
-                        //std::cout << "gay" << std::endl;
                         sound.setBuffer(damage_sound);
                         player.setHealth(player.getHealth() - 1);
                         enemy.setHealth(enemy.getHealth() - 1);
