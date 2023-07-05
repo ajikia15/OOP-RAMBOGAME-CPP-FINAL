@@ -1,171 +1,139 @@
 #include <SFML/Graphics.hpp>
 
 #define E_H 50             // ENTITY HEIGHT
-#define E_W 60             // ENTITY WIDTH
+#define E_W 50             // ENTITY WIDTH
 #define P_HP 5             // PLAYER STARTING HP
 #define EN_HP 1            // ENEMY STARTING HP 
-#define speed 5
+
 #define STARTX 0
-#define STARTY MAX_Y-E_H
+#define STARTY 0
 #define MAX_X 1024
 #define MAX_Y 768
 
-#define FPS 90
 
-class Entity : public sf::Transformable
+#define FPS 120
+
+class Entity : public sf::Sprite
 {
+protected:
+    int m_health;
+    int m_width;
+    int m_height;
+
 public:
-    Entity(int health, int moveSpeed, int damage, int width, int height)
-        : m_health(health), m_damage(damage), m_width(width), m_height(height), isJumping(false), velocity(0, 0), acceleration(0) {}
+    Entity(int health, int width, int height)
+        : m_health(health), m_width(width), m_height(height) {}
 
     int getHealth() const { return m_health; }
     void setHealth(int health) { m_health = health; }
-
-
-    int getDamage() const { return m_damage; }
-    void setDamage(int damage) { m_damage = damage; }
 
     int getWidth() const { return m_width; }
     void setWidth(int width) { m_width = width; }
 
     int getHeight() const { return m_height; }
     void setHeight(int height) { m_height = height; }
-    
-    int getx() { return x; }
-    void setx(int xs) { x = xs; }
-    
-    int gety() { return y; }
-    void sety(int ys) { y = ys; }
-
-    bool getIsJumping() const { return isJumping; }
-    void setIsJumping(bool jumping) { isJumping = jumping; }
-
-    void jump() {
-        if (!getIsJumping()) {
-            isJumping = true;
-            velocity.y = -50;  // Adjust this value as needed
-            acceleration = 1.0;  // Adjust this value as needed
-        }
-    }
 
     /* for testing only */
     sf::RectangleShape m_rectangle;
-
-protected:
-    sf::Vector2f velocity;  // New member variable for velocity
-    float acceleration;    // New member variable for acceleration
-    bool isJumping;         // New member variable for jumping state
-
-private:
-    int m_health;
-    int m_damage;
-    int m_width;
-    int m_height;
-    int x, y;
 };
 
 class Player : public Entity
 {
 private:
     sf::Texture spriteSheetTexture;
-    sf::Sprite playerSprite;
-    sf::Vector2f direction;
+    sf::Vector2f velocity;  // Velocity of the player
+    bool isJumping;        // Flag to track if the player is jumping
+    float jumpVelocity;    // Velocity of the player during jumping
+    float gravity;         // Gravity affecting the player
 
 public:
-    Player(int health, int x, int y, int width, int height, int moveSpeed, int damage)
-        : Entity(health, speed, damage, width, height), direction(1, 0)
-    {
+    Player()
+        : Entity(P_HP, E_W, E_H), velocity(0.0f, 0.0f), isJumping(false), jumpVelocity(-10.0f), gravity(0.5f) {
+        //------------------------------------------------------------------------------------   
+        //add player sprite
         if (!spriteSheetTexture.loadFromFile("./player/john_idle.png"))
         {
-            // Error accessing sprite location
+            //error accessing sprite location
         }
+        // Define the coordinates and size of the desired part of the tile sheet
+        int tileX = 0;  // X coordinate of the tile within the tile sheet
+        int tileY = 0;  // Y coordinate of the tile within the tile sheet
+        int tileSize = 22;  // Size of each tile
 
-        int tileX = 0;
-        int tileY = 0;
-        int tileSize = 22;
-
-        playerSprite.setTexture(spriteSheetTexture);
-        playerSprite.setTextureRect(sf::IntRect(tileX, tileY, tileSize, tileSize));
-
-        playerSprite.setPosition(x, y);
-        playerSprite.setScale(E_W / 26.0f, E_H / 22.0f);
+        // Set the texture rectangle of the sprite to display the desired part of the tile sheet
+        setTexture(spriteSheetTexture);
+        setTextureRect(sf::IntRect(tileX, tileY, tileSize, tileSize));
+        // Set the initial position, scale, or any other properties of the sprite
+        setPosition(MAX_X / 2, MAX_Y - E_H);
+        setScale(1.0f, 1.0f);
+        //------------------------------------------------------------------------------------
     }
 
-    sf::Sprite& getPlayerSprite() {
-        return playerSprite;
+    void jump() {
+        if (!isJumping) {
+            velocity.y = jumpVelocity;
+            isJumping = true;
+        }
     }
-
-    void move(sf::Vector2f direction) {
-        sf::Vector2f newPosition = playerSprite.getPosition() + sf::Vector2f(direction.x * speed, direction.y * speed);
-
-        if (newPosition.x < STARTX) {
-            newPosition.x = STARTX;
-        }
-        if (newPosition.x + getWidth() > MAX_X) {
-            newPosition.x = MAX_X - getWidth();
-        }
-        if (newPosition.y < STARTY) {
-            newPosition.y = STARTY;
-        }
-        if (newPosition.y + getHeight() > MAX_Y) {
-            newPosition.y = MAX_Y - getHeight();
-        }
-
-        if (isJumping) {
-            velocity.y += acceleration;
-            newPosition.y += velocity.y;
-
-            if (newPosition.y >= STARTY) {
-                newPosition.y = STARTY;
-                isJumping = false;
-                velocity.y = 0;
-                acceleration = 0;
-            }
-        }
-
-        this->direction = direction;
-        playerSprite.setPosition(newPosition);
-    }
-
-    
 
     void shoot() {
         // Implement shooting logic here
     }
 
     void handleInput() {
+        velocity.x = 0.0f;
+
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left)) {
-            move(sf::Vector2f(-1, 0));
+            velocity.x = -1.0f;
         }
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right)) {
-            move(sf::Vector2f(1, 0));
+            velocity.x = 1.0f;
         }
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up)) {
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space)) {
             jump();
         }
     }
 
-    void draw(sf::RenderWindow& window)
-    {
+    void update(float deltaTime) {
+        // Apply gravity to the player
+        velocity.y += gravity;
 
-        if (direction.x != 0) {
-            if (direction.x > 0) {
-                playerSprite.setScale(E_W / 26.0f, E_H / 22.0f);
-            }
-            else if (direction.x < 0) {
-                playerSprite.setScale(-E_W / 26.0f, E_H / 22.0f);
-            }
+        // Update the player's position based on velocity
+        sf::Vector2f position = getPosition();
+        position += velocity * deltaTime * 100.0f;  // Adjust the multiplier to control movement speed
+
+        // Check if the player is within the window boundaries
+        if (position.x < 0) {
+            position.x = 0;
+        }
+        if (position.x + E_W > MAX_X) {
+            position.x = MAX_X - E_W;
+        }
+        if (position.y < 0) {
+            position.y = 0;
+        }
+        if (position.y + E_H > MAX_Y) {
+            position.y = MAX_Y - E_H;
+            velocity.y = 0.0f;
+            isJumping = false;
         }
 
-        window.draw(playerSprite);
+        setPosition(position);
+
+        // Check if the player is jumping and reached the peak
+        if (isJumping && velocity.y >= 0.0f) {
+            velocity.y = 0.0f;
+            isJumping = false;
+        }
     }
+
 };
 
 class Enemy : public Entity
 {
 public:
-    Enemy(int health, int moveSpeed, int damage, int width, int height)
-        : Entity(health, moveSpeed, damage, width, height) {}
+    Enemy(int health, int width, int height)
+        : Entity(health, width, height) {}
 
     void aiBehavior() {
         // Implement AI behavior here
@@ -175,13 +143,14 @@ public:
 class Game
 {
 public:
-    Game() : window(sf::VideoMode(MAX_X, MAX_Y), "Game Window") {
+    Game() : window(sf::VideoMode(MAX_X, MAX_Y), "SEX") {
         window.setFramerateLimit(FPS);
     }
 
     void run() {
-        Player player(P_HP, STARTX, STARTY, E_W, E_H, speed, EN_HP);
+        Player player;
 
+        sf::Clock clock;
         while (window.isOpen()) {
             sf::Event event;
             while (window.pollEvent(event)) {
@@ -191,11 +160,12 @@ public:
                 player.handleInput();
             }
 
+            // Update game state here
+            float deltaTime = clock.restart().asSeconds();
+            player.update(deltaTime);
+
             window.clear();
-
-            player.move(sf::Vector2f(0, 0));  // Update player position only if not jumping
-
-            player.draw(window);
+            window.draw(player);
             window.display();
         }
     }
