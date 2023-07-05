@@ -14,12 +14,7 @@
 #define MAX_X 1024
 #define MAX_Y 768
 
-
 #define FPS 120
-
-
-
-
 
 class Entity : public sf::Sprite
 {
@@ -27,11 +22,11 @@ protected:
     int m_health;
     int m_width;
     int m_height;
+    float gravity;         // 
     sf::Vector2f velocity;  // Velocity of the entity
-
 public:
     Entity(int health, int width, int height)
-        : m_health(health), m_width(width), m_height(height), velocity(0.0f, 0.0f) {}
+        : m_health(health), m_width(width), m_height(height), velocity(0.0f, 0.0f), gravity(0.5f) {}
 
     int getHealth() const { return m_health; }
     void setHealth(int health) { m_health = health; }
@@ -101,18 +96,50 @@ public:
     }
 };
 
+class Enemy : public Entity
+{
+private:
+    sf::Texture spriteSheetTexture;
+public:
+    Enemy(int health, int width, int height)
+        : Entity(health, width, height) {
+        if (!spriteSheetTexture.loadFromFile("./player/john_idle.png"))
+        {
+            //error accessing sprite location
+        }
+        // Define the coordinates and size of the desired part of the tile sheet
+        int tileX = 0;  // X coordinate of the tile within the tile sheet
+        int tileY = 0;  // Y coordinate of the tile within the tile sheet
+
+        // Set the texture rectangle of the sprite to display the desired part of the tile sheet
+        setTexture(spriteSheetTexture);
+        setTextureRect(sf::IntRect(tileX, tileY, 26, 22));
+    }
+
+    void aiBehavior() {
+        // Implement AI behavior here
+    }
+
+    void update(float deltaTime) {
+        // Apply gravity to the the enemy
+        velocity.y += gravity;
+
+        // Update the enemys's position based on velocity
+        Entity::update(deltaTime);
+    }
+};
+
 class Player : public Entity
 {
 private:
     sf::Texture spriteSheetTexture;
     bool isJumping;        // Flag to track if the player is jumping
     float jumpVelocity;    // Velocity of the player during jumping
-    float gravity;         // Gravity affecting the player
     int fireDelay;
     std::vector<Bullet> bullets;
 public:
     Player()
-        : Entity(P_HP, E_W, E_H), isJumping(false), jumpVelocity(-10.0f), gravity(0.5f), fireDelay(0) {
+        : Entity(P_HP, E_W, E_H), isJumping(false), jumpVelocity(-10.0f), fireDelay(0) {
         //------------------------------------------------------------------------------------   
         //add player sprite
         if (!spriteSheetTexture.loadFromFile("./player/john_idle.png"))
@@ -133,25 +160,21 @@ public:
         //------------------------------------------------------------------------------------
     }
     void fire() {
-        if (fireDelay >= 15) { // If enough time has passed since the last shot
+        if (fireDelay >= 30) { // If enough time has passed since the last shot
             // Calculate the bullet's initial position based on the player's direction
             sf::Vector2f bulletPosition;
             if (getScale().x > 0) {
-                // Player is facing right
-                std::cout << "facing right" << std::endl;
-
+                //std::cout << "facing right" << std::endl
                 bulletPosition = sf::Vector2f(getPosition().x + getWidth(), getPosition().y);
             }
             else {
-                // Player is facing left
-                std::cout << "facing left" << std::endl;
-
+                //std::cout << "facing left" << std::endl;
                 bulletPosition = sf::Vector2f(getPosition().x, getPosition().y);
             }
 
             // Fire a bullet from the calculated position
             bullets.push_back(Bullet(bulletPosition.x, bulletPosition.y, getScale().x));
-            std::cout << "firedelay" << std::endl;
+            //std::cout << "firedelay" << std::endl;
             fireDelay = 0;
         }
     }
@@ -218,16 +241,7 @@ public:
 
 };
 
-class Enemy : public Entity
-{
-public:
-    Enemy(int health, int width, int height)
-        : Entity(health, width, height) {}
 
-    void aiBehavior() {
-        // Implement AI behavior here
-    }
-};
 
 class Game
 {
@@ -252,9 +266,21 @@ public:
             // Update game state here
             float deltaTime = clock.restart().asSeconds();
             player.update(deltaTime);
+            if (enemySpawnClock.getElapsedTime() >= enemySpawnInterval) {
+                enemies.push_back(Enemy(EN_HP, E_W, E_H));
+                enemySpawnClock.restart();
+            }
+
+            // Update enemies
+            for (auto& enemy : enemies) {
+                enemy.update(deltaTime);
+            }
 
             window.clear();
             window.draw(player);
+            for (const auto& enemy : enemies) {
+                window.draw(enemy);
+            }
             for (const auto& bullet : player.getBullets()) {
                 window.draw(bullet);
             }
@@ -264,6 +290,11 @@ public:
 
 private:
     sf::RenderWindow window;
+    sf::Clock enemySpawnClock;
+    sf::Time enemySpawnTimer;
+    sf::Time enemySpawnInterval = sf::seconds(2);
+    std::vector<Enemy> enemies;
+
 };
 
 int main() {
