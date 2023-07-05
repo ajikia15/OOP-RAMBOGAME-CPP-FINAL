@@ -1,37 +1,37 @@
 #include <SFML/Graphics.hpp>
-#include <iostream>
 
-#define E_H 65             // ENTITY HEIGHT
-#define E_W 55             // ENTITY WIDTH
-#define E_SP 300.0f        // ENTITY SPEED
-#define BLT_SP 20.0f       // BULLET SPEED
 
+#define E_H 50             // ENTITY HEIGHT
+#define E_W 50             // ENTITY WIDTH
 #define P_HP 5             // PLAYER STARTING HP
-
 #define EN_HP 1            // ENEMY STARTING HP 
-#define EN_SPWN  600          // ENEMY SPAWN INTERVAL (in seconds)
 
 #define STARTX 0
 #define STARTY 0
-#define MAX_X 1024
-#define MAX_Y 768
+#define MAX_X 1680
+#define MAX_Y 920
 
 #define FPS 120
 
-class Entity : public sf::Sprite
+
+
+class Entity : public sf::Transformable
 {
-protected:
-    int m_health;
-    int m_width;
-    int m_height;
-    float gravity;         // 
-    sf::Vector2f velocity;  // Velocity of the entity
 public:
-    Entity(int health, int width, int height)
-        : m_health(health), m_width(width), m_height(height), velocity(0.0f, 0.0f), gravity(0.5f) {}
+    Entity(int health, int moveSpeed, int damage, int width, int height)
+        : m_health(health), m_moveSpeed(moveSpeed), m_damage(damage), m_width(width), m_height(height) {}
 
     int getHealth() const { return m_health; }
     void setHealth(int health) { m_health = health; }
+
+    int getMoveSpeed() const { return m_moveSpeed; }
+    void setMoveSpeed(int moveSpeed) { m_moveSpeed = moveSpeed; }
+
+    int getDamage() const { return m_damage; }
+    void setDamage(int damage) { m_damage = damage; }
+
+    sf::Vector2f getPosition() const { return this->getPosition(); }
+    void setPosition(const sf::Vector2f& position) { this->setPosition(position); }
 
     int getWidth() const { return m_width; }
     void setWidth(int width) { m_width = width; }
@@ -39,324 +39,97 @@ public:
     int getHeight() const { return m_height; }
     void setHeight(int height) { m_height = height; }
 
-    sf::Vector2f getVelocity() const { return velocity; }
-    void setVelocity(const sf::Vector2f& vel) { velocity = vel; }
-
     /* for testing only */
     sf::RectangleShape m_rectangle;
 
-    bool isColliding(const Entity& other) const {
-        if (typeid(*this) == typeid(other)) {
-            // Entities of the same type don't cause damage
-            return false;
-        }
-        sf::FloatRect thisBounds = getGlobalBounds();
-        sf::FloatRect otherBounds = other.getGlobalBounds();
-        return thisBounds.intersects(otherBounds);
-    }
-
-    void update(float deltaTime) {
-        sf::Vector2f position = getPosition();
-
-        // Update the entity's position based on velocity
-        position += velocity * deltaTime * E_SP;  // Adjust the multiplier to control movement speed
-
-        // Check if the entity is within the window boundaries
-        if (position.x < 0) {
-            position.x = 0;
-        }
-        if (position.x + m_width > MAX_X) {
-            position.x = MAX_X - m_width;
-        }
-        if (position.y < 0) {
-            position.y = 0;
-        }
-        if (position.y + m_height > MAX_Y) {
-            position.y = MAX_Y - m_height;
-        }
-        setPosition(position);
-    }
+private:
+    int m_health;
+    int m_moveSpeed;
+    int m_damage;
+    int m_width;
+    int m_height;
 };
 
-class Bullet : public Entity
+class Player : public Entity
 {
-private:
-    sf::Texture spriteSheetTexture;
-    float playerScale;
 public:
-    Bullet(int x, int y, float scale)
-        : Entity(1, 5, 10) {
-        // Bullets have 1 HP and size 5x10
-        setPosition(x, y + E_H / 2); // adding to y because the bullet spawns a bit higher than the player's gun
-        playerScale = scale;
-        if (!spriteSheetTexture.loadFromFile("./player/john_idle.png"));
-        setTexture(spriteSheetTexture);
-        setTextureRect(sf::IntRect(0, 0, 26, 22));
+    Player(int health, int moveSpeed, int damage, int width, int height)
+        : Entity(health, moveSpeed, damage, height, width) {
+        /* for testing only */
+        m_rectangle.setSize(sf::Vector2f(E_W, E_H));
+        m_rectangle.setFillColor(sf::Color::Blue);
     }
 
-    void update(float deltaTime) {
-        sf::Vector2f position = getPosition();
+    void move(sf::Vector2f direction) {
+        // Implement movement logic here
+    }
 
-        // Update the bullet's position based on the player's direction
-        float movementDirection = playerScale < 0 ? -1.0f : 1.0f;  // negative/positive scale indicates which way the player is facing. 
-        position.x += BLT_SP * movementDirection * deltaTime * E_SP;
-        setPosition(position);
-        if (position.x < STARTX || position.x > MAX_X || position.y < STARTY || position.y > MAX_Y) {
-            // Remove the bullet    
-            setHealth(0);
+    void jump() {
+        // Implement jumping logic here
+    }
+
+    void shoot() {
+        // Implement shooting logic here
+    }
+    void handleInput() {
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up)) {
+            move(sf::Vector2f(0, -getMoveSpeed()));
         }
-        if (getHealth() <= 0) {
-            // Remove the bullet
-            return;
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Down)) {
+            move(sf::Vector2f(0, getMoveSpeed()));
+        }
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left)) {
+            move(sf::Vector2f(-getMoveSpeed(), 0));
+        }
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right)) {
+            move(sf::Vector2f(getMoveSpeed(), 0));
+        }
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space)) {
+            jump();
         }
     }
 };
 
 class Enemy : public Entity
 {
-private:
-    sf::Texture spriteSheetTexture;
 public:
-    Enemy(int health, int width, int height, const sf::Vector2f& spawnPosition)
-        : Entity(health, width, height) {
-        setPosition(spawnPosition);
-        if (!spriteSheetTexture.loadFromFile("./player/john_idle.png"))
-        {
-            std::cout << "pic not found" << std::endl;
-        }
-        // Define the coordinates and size of the desired part of the tile sheet
-        int tileX = 0;  // X coordinate of the tile within the tile sheet
-        int tileY = 0;  // Y coordinate of the tile within the tile sheet
-
-        // Set the texture rectangle of the sprite to display the desired part of the tile sheet
-        setTexture(spriteSheetTexture);
-        setTextureRect(sf::IntRect(tileX, tileY, 26, 22));
-        setScale(E_W / 26.0f, E_H / 22.0f);
-
-    }
+    Enemy(int health, int moveSpeed, int damage, int width, int height)
+        : Entity(health, moveSpeed, damage, width, height) {}
 
     void aiBehavior() {
         // Implement AI behavior here
     }
-
-    void update(float deltaTime) {
-        // Apply gravity to the the enemy
-        velocity.y += gravity;
-
-        // Update the enemys's position based on velocity
-        Entity::update(deltaTime);
-    }
 };
-
-class Player : public Entity
-{
-private:
-    sf::Texture spriteSheetTexture;
-    bool isJumping;        // Flag to track if the player is jumping
-    float jumpVelocity;    // Velocity of the player during jumping
-    int fireDelay;
-    std::vector<Bullet> bullets;
-public:
-    Player()
-        : Entity(P_HP, E_W, E_H), isJumping(false), jumpVelocity(-10.0f), fireDelay(0) {
-        //------------------------------------------------------------------------------------   
-        //add player sprite
-        if (!spriteSheetTexture.loadFromFile("./player/john_idle.png"))
-        {
-            //error accessing sprite location
-        }
-        // Define the coordinates and size of the desired part of the tile sheet
-        int tileX = 0;  // X coordinate of the tile within the tile sheet
-        int tileY = 0;  // Y coordinate of the tile within the tile sheet
-        int tileSize = 22;  // Size of each tile
-
-        // Set the texture rectangle of the sprite to display the desired part of the tile sheet
-        setTexture(spriteSheetTexture);
-        setTextureRect(sf::IntRect(tileX, tileY, 26, tileSize));
-        // Set the initial position, scale, or any other properties of the sprite
-        setPosition(MAX_X / 2, MAX_Y - E_H);
-        setScale(E_W / 26.0f, E_H / 22.0f);
-        //------------------------------------------------------------------------------------
-    }
-    void fire() {
-        if (fireDelay >= 30) { // If enough time has passed since the last shot
-            // Calculate the bullet's initial position based on the player's direction
-            sf::Vector2f bulletPosition;
-            if (getScale().x > 0) {
-                //std::cout << "facing right" << std::endl
-                bulletPosition = sf::Vector2f(getPosition().x + getWidth(), getPosition().y);
-            }
-            else {
-                //std::cout << "facing left" << std::endl;
-                bulletPosition = sf::Vector2f(getPosition().x, getPosition().y);
-            }
-
-            // Fire a bullet from the calculated position
-            bullets.push_back(Bullet(bulletPosition.x, bulletPosition.y, getScale().x));
-            //std::cout << "firedelay" << std::endl;
-            fireDelay = 0;
-        }
-    }
-
-    void jump() {
-        if (!isJumping) {
-            velocity.y = jumpVelocity;
-            isJumping = true;
-        }
-    }
-
-    void handleInput() {
-        velocity.x = 0.0f;
-
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left)) {
-            velocity.x = -1.0f;
-            setScale(-E_W / 26.0f, E_H / 22.0f);
-            setOrigin(E_W / 2 - E_W / 26.0f, 0); // karoche marjvniv tu midiodi da marcxniv gauxvdevdi an piriqit ucnaurad iyo dzaan da bevri kombinacia vcade
-            // sabolood aseti gamoiyureba yvelaze kargad rato ar vici ar sheexo
-
-        }
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right)) {
-            velocity.x = 1.0f;
-            setScale(E_W / 26.0f, E_H / 22.0f);
-            setOrigin(E_W / 26.0f - E_W / 4, 0); // esec
-
-        }
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space)) {
-            jump();
-        }
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Z)) {
-            fire();
-        }
-    }
-
-    void update(float deltaTime) {
-        // Apply gravity to the player
-        velocity.y += gravity;
-
-        // Update the player's position based on velocity
-        Entity::update(deltaTime);
-
-        // Check if the player is jumping and reached the peak
-        if (isJumping && velocity.y >= 0.0f) {
-            velocity.y = 0.0f;
-            isJumping = false;
-        }
-        fireDelay++; // Increment the fire delay
-
-        // Update the bullets
-        for (auto& bullet : bullets) {
-            bullet.update(deltaTime);
-        }
-
-
-    }
-
-    std::vector<Bullet>& getBullets() { return bullets; }
-
-};
-
-
 
 class Game
 {
-private:
-    sf::RenderWindow window;
-    sf::Clock enemySpawnClock;
-    sf::Time enemySpawnTimer;
-    sf::Time enemySpawnInterval = sf::milliseconds(EN_SPWN);
-    std::vector<Enemy> enemies;
-    std::vector<sf::Vector2f> spawnPoints;
 public:
-    Game() : window(sf::VideoMode(MAX_X, MAX_Y), "SEX") {
+    Game() : window(sf::VideoMode(MAX_X, MAX_X), "SEX") {
         window.setFramerateLimit(FPS);
-
-        // spawn points on the right side
-        spawnPoints.push_back(sf::Vector2f(E_W, MAX_Y - E_H));   // bottom
-        spawnPoints.push_back(sf::Vector2f(E_W, MAX_Y - E_H - 50));
-
-        //spawn points on the left side
-        spawnPoints.push_back(sf::Vector2f(MAX_X - E_W, MAX_Y - E_H)); // bottom
-        spawnPoints.push_back(sf::Vector2f(MAX_X - E_W, MAX_Y - E_H - 50));
-
     }
 
     void run() {
-        Player player;
-
-        sf::Clock clock;
+        Player player(P_HP, STARTX, STARTY, E_W, E_H);
         while (window.isOpen()) {
-            while (player.getHealth() > 0)
-                //while (1)
-
-            { 
-                sf::Event event;
-                while (window.pollEvent(event)) {
-                    if (event.type == sf::Event::Closed) {
-                        window.close();
-                    }
-                    player.handleInput();
+            sf::Event event;
+            while (window.pollEvent(event)) {
+                if (event.type == sf::Event::Closed) {
+                    window.close();
                 }
-
-                // Update game state here
-                float deltaTime = clock.restart().asSeconds();
-                player.update(deltaTime);
-                if (enemySpawnClock.getElapsedTime() >= enemySpawnInterval) {
-                    int spawnIndex = std::rand() % spawnPoints.size();
-                    sf::Vector2f spawnPosition = spawnPoints[spawnIndex];
-                    enemies.push_back(Enemy(EN_HP, E_W, E_H, spawnPosition));
-                    enemySpawnClock.restart();
-                }
-
-                // Update enemies
-                for (auto it = enemies.begin(); it != enemies.end(); ) {
-                    auto& enemy = *it;
-                    enemy.update(deltaTime);
-
-                    if (enemy.isColliding(player)) {
-                        std::cout << "gay" << std::endl;
-                        player.setHealth(player.getHealth() - 1);
-                        enemy.setHealth(enemy.getHealth() - 1);
-                    }
-                    for (auto bulletIt = player.getBullets().begin(); bulletIt != player.getBullets().end(); ) {
-                        auto& bullet = *bulletIt;
-                        if (bullet.isColliding(enemy)) {
-                            std::cout << "Collision with enemy" << std::endl;
-                            bullet.setHealth(0);
-                            enemy.setHealth(enemy.getHealth() - 1);
-                        }
-
-                        if (bullet.getHealth() <= 0) {
-                            bulletIt = player.getBullets().erase(bulletIt);  // Remove the bullet
-                        }
-                        else {
-                            ++bulletIt;
-                        }
-                    }
-                    if (enemy.getHealth() <= 0) {
-                        it = enemies.erase(it);  // Remove the enemy
-                    }
-                    else {
-                        ++it;
-                    }
-                }
-
-                window.clear();
-                window.draw(player);
-                for (const auto& enemy : enemies) {
-                    window.draw(enemy);
-                }
-                for (const auto& bullet : player.getBullets()) {
-                    window.draw(bullet);
-                }
-                window.display();
+                player.handleInput();
             }
-            if (player.getHealth() <1)
-            {
-                std::cout << "YOU'VE LOST" << std::endl;
-            }
+
+            // Update game state here
+
+            window.clear();
+            // Draw game state here
+            window.display();
         }
     }
 
+
+private:
+    sf::RenderWindow window;
 };
 
 int main() {
