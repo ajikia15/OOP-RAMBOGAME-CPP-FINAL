@@ -77,11 +77,11 @@ public:
         setPosition(position);
     }
 };
-
+    
 class Bullet : public Entity
 {
 private:
-    sf::Texture spriteSheetTexture;
+    static sf::Texture bulletSheet;
     float playerScale;
 public:
     Bullet(int x, int y, float scale)
@@ -89,9 +89,10 @@ public:
         // Bullets have 1 HP and size 5x10
         setPosition(x, y + E_H / 2); // adding to y because the bullet spawns a bit higher than the player's gun
         playerScale = scale;
-        if (!spriteSheetTexture.loadFromFile("./player/john_idle.png"));
-        setTexture(spriteSheetTexture);
-        setTextureRect(sf::IntRect(0, 0, 26, 22));
+        if (!bulletSheet.loadFromFile("./player/weapon_bullet.png")) {
+            std::cout << "balls" << std::endl;
+        }
+        Bullet::setTexture(bulletSheet);
     }
 
     void update(float deltaTime) {
@@ -111,16 +112,17 @@ public:
         }
     }
 };
+sf::Texture Bullet::bulletSheet;
 
 class Enemy : public Entity
 {
 private:
-    sf::Texture spriteSheetTexture;
+    static sf::Texture enemySheet;
 public:
     Enemy(int health, int width, int height, const sf::Vector2f& spawnPosition)
         : Entity(health, width, height) {
         setPosition(spawnPosition);
-        if (!spriteSheetTexture.loadFromFile("./player/john_idle.png"))
+        if (!enemySheet.loadFromFile("./player/john_idle.png"))
         {
             std::cout << "pic not found" << std::endl;
         }
@@ -129,7 +131,7 @@ public:
         int tileY = 0;  // Y coordinate of the tile within the tile sheet
 
         // Set the texture rectangle of the sprite to display the desired part of the tile sheet
-        setTexture(spriteSheetTexture);
+        setTexture(enemySheet);
         setTextureRect(sf::IntRect(tileX, tileY, 26, 22));
         setScale(E_W / 26.0f, E_H / 22.0f);
 
@@ -147,6 +149,7 @@ public:
         Entity::update(deltaTime);
     }
 };
+sf::Texture Enemy::enemySheet;
 
 class Player : public Entity
 {
@@ -255,7 +258,156 @@ public:
 
 };
 
+class Map :public Entity
+{
+private:
+    sf::Texture tileSheetTexture;
+    sf::Texture backgroundTexture;
+    sf::Texture backgroundTexture1;
+    sf::Texture jungleTreeTexture;
+    sf::Sprite sprite;
+    sf::Sprite backgroundSprite;
+    sf::Sprite backgroundSprite1;
+    sf::Sprite jungleTreeSprite;
+    int TileW;
+    int TileH;
 
+    int TotalW;
+    int TotalH;
+
+public:
+    Map() :
+        TileW(26), TileH(22), TotalW(0), TotalH(0), Entity(1, 5, 10)
+    {
+    }
+    void Initialize() {};
+
+    void Load() {
+        if (tileSheetTexture.loadFromFile("./tileset.png")) {
+            TotalW = tileSheetTexture.getSize().x / TileW;
+            TotalH = tileSheetTexture.getSize().y / TileH;
+
+            sprite.setTexture(tileSheetTexture);
+            sprite.setTextureRect(sf::IntRect(26, 0, TileW, TileH));
+
+            sprite.setScale(sf::Vector2f(3, 3));
+            sprite.setPosition(1, MAX_Y - 50);
+        }
+
+
+        if (backgroundTexture.loadFromFile("./background/background_color.png")) {
+
+            backgroundSprite.setTexture(backgroundTexture);
+            backgroundSprite.setTextureRect(sf::IntRect(0, 0, MAX_X, MAX_Y));
+
+            if (backgroundTexture1.loadFromFile("./background/jungle_paralax_bg2.png")) {
+
+                backgroundTexture1.setRepeated(true); // Set the texture repeat mode to true
+
+                backgroundSprite1.setTexture(backgroundTexture1);
+                backgroundSprite1.setTextureRect(sf::IntRect(0, 0, MAX_X, MAX_Y));
+                //Set the position of the background sprite to the bottom of the window
+                backgroundSprite1.setPosition(0, MAX_Y - backgroundTexture1.getSize().y - 250);
+                backgroundSprite1.setScale(2, 2);
+            }
+        }
+
+
+
+        //load jungle trees 
+
+        if (jungleTreeTexture.loadFromFile("./background/jungle_tree2.png")) {
+            jungleTreeSprite.setTexture(jungleTreeTexture);
+            jungleTreeSprite.setScale(3, 3);
+        }
+    }
+
+
+    void Update(float deltatime) {
+
+    }
+    void Draw(sf::RenderWindow& window) {
+
+        window.draw(backgroundSprite);
+        window.draw(backgroundSprite1);
+
+
+        int numSprites = 20; // Number of sprites to print
+        int spacing = 50; // Spacing between each sprite
+        int i = 0;
+        //lower ground
+        do {
+            sf::Sprite currentSprite = sprite; // Create a copy of the sprite
+
+            // Adjust the position of the current sprite
+            int posX = sprite.getPosition().x + (i * spacing);
+            int posY = sprite.getPosition().y;
+
+            currentSprite.setPosition(posX, posY);
+            window.draw(currentSprite);
+
+
+            i++;
+
+        } while (i < numSprites);
+
+
+        i = 0;
+        numSprites = 5;
+        //top left ground
+        do {
+            sf::Sprite currentSprite = sprite; // Create a copy of the sprite
+
+            // Adjust the position of the current sprite
+            int posX = sprite.getPosition().x + (i * spacing);
+            int posY = 300;
+
+            currentSprite.setPosition(posX, posY);
+            window.draw(currentSprite);
+            i++;
+
+        } while (i < numSprites);
+
+
+        i = 0;
+        numSprites = 9;
+        //middle right ground
+        do {
+            sf::Sprite currentSprite = sprite; // Create a copy of the sprite
+
+            int posX = MAX_X;
+            // Adjust the position of the current sprite
+            posX = posX - (i * spacing);
+            int posY = 500;
+
+            currentSprite.setPosition(posX, posY);
+            window.draw(currentSprite);
+            i++;
+        } while (i < numSprites);
+
+        i = 0;
+        numSprites = 6;
+        //top right ground
+        do {
+            sf::Sprite currentSprite = sprite; // Create a copy of the sprite
+
+            int posX = MAX_X;
+            // Adjust the position of the current sprite
+            posX = posX - (i * spacing);
+            int posY = 200;
+
+            currentSprite.setPosition(posX, posY);
+            window.draw(currentSprite);
+            i++;
+        } while (i < numSprites);
+    }
+
+    bool isColliding(const Player& player) const {
+        // Check if the player's bounding box intersects with the map sprite's bounding box
+        return backgroundSprite.getGlobalBounds().intersects(player.getGlobalBounds());
+    }
+
+};
 
 class Game
 {
@@ -266,6 +418,7 @@ private:
     sf::Time enemySpawnInterval = sf::milliseconds(EN_SPWN);
     std::vector<Enemy> enemies;
     std::vector<sf::Vector2f> spawnPoints;
+
 public:
     Game() : window(sf::VideoMode(MAX_X, MAX_Y), "SEX") {
         window.setFramerateLimit(FPS);
@@ -282,13 +435,26 @@ public:
 
     void run() {
         Player player;
+        Map map;
+
+
+        map.Load();
+
+
+
 
         sf::Clock clock;
         while (window.isOpen()) {
             while (player.getHealth() > 0)
-                //while (1)
+            {
+                // Check for collision between the map sprite and the player sprite
+                if (map.isColliding(player)) {
+                    // Collision occurred
+                    std::cout << "Collision between map and player" << std::endl;
+                    // Handle the collision as desired (e.g., reduce player health, stop player movement, etc.)
+                }
 
-            { 
+
                 sf::Event event;
                 while (window.pollEvent(event)) {
                     if (event.type == sf::Event::Closed) {
@@ -300,6 +466,8 @@ public:
                 // Update game state here
                 float deltaTime = clock.restart().asSeconds();
                 player.update(deltaTime);
+                map.Update(deltaTime);
+
                 if (enemySpawnClock.getElapsedTime() >= enemySpawnInterval) {
                     int spawnIndex = std::rand() % spawnPoints.size();
                     sf::Vector2f spawnPosition = spawnPoints[spawnIndex];
@@ -317,6 +485,7 @@ public:
                         player.setHealth(player.getHealth() - 1);
                         enemy.setHealth(enemy.getHealth() - 1);
                     }
+
                     for (auto bulletIt = player.getBullets().begin(); bulletIt != player.getBullets().end(); ) {
                         auto& bullet = *bulletIt;
                         if (bullet.isColliding(enemy)) {
@@ -339,8 +508,8 @@ public:
                         ++it;
                     }
                 }
-
                 window.clear();
+                map.Draw(window);
                 window.draw(player);
                 for (const auto& enemy : enemies) {
                     window.draw(enemy);
@@ -350,7 +519,7 @@ public:
                 }
                 window.display();
             }
-            if (player.getHealth() <1)
+            if (player.getHealth() < 1)
             {
                 std::cout << "YOU'VE LOST" << std::endl;
             }
