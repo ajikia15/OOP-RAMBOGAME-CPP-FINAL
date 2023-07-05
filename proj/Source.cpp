@@ -1,55 +1,75 @@
 #include <SFML/Graphics.hpp>
+#include <cmath>
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 
 #define E_H 50             // ENTITY HEIGHT
-#define E_W 50             // ENTITY WIDTH
+#define E_W 60             // ENTITY WIDTH
 #define P_HP 5             // PLAYER STARTING HP
 #define EN_HP 1            // ENEMY STARTING HP 
-
+#define speed 5
 #define STARTX 0
-#define STARTY 0
+#define STARTY MAX_Y-E_H
 #define MAX_X 1024
 #define MAX_Y 768
 
-#define FPS 120
+#define FPS 90
 
-class Entity
+
+
+class Entity : public sf::Transformable
 {
-protected:
-    int m_health;
-    int m_width;
-    int m_height;
-
 public:
-    Entity(int health, int width, int height)
-        : m_health(health), m_width(width), m_height(height) {}
+    Entity(int health, int moveSpeed, int damage, int width, int height)
+        : m_health(health), m_damage(damage), m_width(width), m_height(height) {}
 
     int getHealth() const { return m_health; }
     void setHealth(int health) { m_health = health; }
+
+
+    int getDamage() const { return m_damage; }
+    void setDamage(int damage) { m_damage = damage; }
 
     int getWidth() const { return m_width; }
     void setWidth(int width) { m_width = width; }
 
     int getHeight() const { return m_height; }
     void setHeight(int height) { m_height = height; }
+    int getx() { return x; }
+    void setx(int xs) { x = xs; }
+    int gety() { return y; }
+    void sety(int ys) { y = ys; }
 
     /* for testing only */
     sf::RectangleShape m_rectangle;
+
+
+
+private:
+    int m_health;
+    int m_damage;
+    int m_width;
+    int m_height;
+    int x, y;
 };
 
-class Player : public sf::Sprite, public Entity
+class Player : public Entity
 {
 private:
     sf::Texture spriteSheetTexture;
-    float movementSpeed;  // Constant movement speed
-
+    sf::Sprite playerSprite;
+    sf::Vector2f direction;
 public:
-    Player()
-        : Entity(P_HP, E_W, E_H), movementSpeed(5.0f) {
+    Player(int health, int x, int y, int width, int height, int moveSpeed, int damage)
+        : Entity(health, speed, damage, width, height), direction(1, 0)
+    {
         //------------------------------------------------------------------------------------   
-        //add player sprite
+            //add player sprite
         if (!spriteSheetTexture.loadFromFile("./player/john_idle.png"))
         {
-            //error accessing sprite location
+            //error accesing sprite location
         }
         // Define the coordinates and size of the desired part of the tile sheet
         int tileX = 0;  // X coordinate of the tile within the tile sheet
@@ -57,17 +77,39 @@ public:
         int tileSize = 22;  // Size of each tile
 
         // Set the texture rectangle of the sprite to display the desired part of the tile sheet
-        setTexture(spriteSheetTexture);
-        setTextureRect(sf::IntRect(tileX, tileY, tileSize, tileSize));
-        // Set the initial position, scale, or any other properties of the sprite
-        setPosition(0, 0);
-        //------------------------------------------------------------------------------------
+        playerSprite.setTexture(spriteSheetTexture);
+        playerSprite.setTextureRect(sf::IntRect(tileX, tileY, tileSize, tileSize));
+
+        playerSprite.setPosition(x, y);
+        playerSprite.setScale( E_W / 26.0f, E_H / 22.0f);
     }
+    sf::Sprite& getPlayerSprite() {
+        return playerSprite;
+    }
+    //------------------------------------------------------------------------------------
 
     void move(sf::Vector2f direction) {
-        sf::Vector2f newPosition = getPosition() + (direction * movementSpeed);
-        setPosition(newPosition);
+        // Calculate the new position of the player sprite
+        sf::Vector2f newPosition = playerSprite.getPosition() + sf::Vector2f(direction.x * speed, direction.y * speed);
+
+        // Make sure the player sprite stays within the bounds of the screen
+        if (newPosition.x < STARTX) {
+            newPosition.x = STARTX;
+        }
+        if (newPosition.x + getWidth() > MAX_X) {
+            newPosition.x = MAX_X - getWidth();
+        }
+        if (newPosition.y < STARTY) {
+            newPosition.y = STARTY;
+        }
+        if (newPosition.y + getHeight() > MAX_Y) {
+            newPosition.y = MAX_Y - getHeight();
+        }
+        this->direction = direction;
+        // Update the position of the player sprite
+        playerSprite.setPosition(newPosition);
     }
+
 
     void jump() {
         // Implement jumping logic here
@@ -76,31 +118,35 @@ public:
     void shoot() {
         // Implement shooting logic here
     }
-
     void handleInput() {
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up)) {
-            move(sf::Vector2f(0, -1));
-        }
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Down)) {
-            move(sf::Vector2f(0, 1));
-        }
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left)) {
             move(sf::Vector2f(-1, 0));
         }
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right)) {
             move(sf::Vector2f(1, 0));
         }
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space)) {
-            jump();
+
+    }
+    void draw(sf::RenderWindow& window)
+    {
+        // Rotate the player sprite based on the current direction
+        if (direction.x > 0) {
+            playerSprite.setScale(E_W / 26.0f, E_H / 22.0f); // Normal scale for facing right
         }
+        else if (direction.x < 0) {
+            playerSprite.setScale(-E_W / 26.0f, E_H / 22.0f); // Horizontal flip for facing left
+        }
+
+        // Draw the player sprite
+        window.draw(playerSprite);
     }
 };
 
 class Enemy : public Entity
 {
 public:
-    Enemy(int health, int width, int height)
-        : Entity(health, width, height) {}
+    Enemy(int health, int moveSpeed, int damage, int width, int height)
+        : Entity(health, moveSpeed, damage, width, height) {}
 
     void aiBehavior() {
         // Implement AI behavior here
@@ -115,7 +161,7 @@ public:
     }
 
     void run() {
-        Player player;
+        Player player(P_HP, STARTX, STARTY, E_W, E_H, speed, EN_HP);
 
         while (window.isOpen()) {
             sf::Event event;
@@ -130,10 +176,11 @@ public:
 
             window.clear();
 
-            window.draw(player);
+            player.draw(window);
             window.display();
         }
     }
+
 
 private:
     sf::RenderWindow window;
