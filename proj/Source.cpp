@@ -179,9 +179,6 @@ public:
         //------------------------------------------------------------------------------------
     }
     void fire() {
-
-
-
         if (fireDelay >= 30) { // If enough time has passed since the last shot
             // Calculate the bullet's initial position based on the player's direction
             sf::Vector2f bulletPosition;
@@ -271,10 +268,9 @@ private:
     sf::Sprite jungleTreeSprite;
     int TileW;
     int TileH;
-    std::vector<sf::Sprite> sprites;
+
     int TotalW;
     int TotalH;
-    Player player;
 
 public:
     Map() :
@@ -324,14 +320,8 @@ public:
     }
 
 
-    void Update(float deltatime, Player& player) {
-        // Check for collision between player and sprites
-        sf::Vector2f playerPosition = getPlayerPositionOnSprite(player);
+    void Update(float deltatime) {
 
-        if (playerPosition.y != -1.f) {
-            // Collision detected, update player's position
-            player.setPosition(playerPosition);
-        }
     }
     void Draw(sf::RenderWindow& window) {
 
@@ -342,8 +332,6 @@ public:
         int numSprites = 20; // Number of sprites to print
         int spacing = 50; // Spacing between each sprite
         int i = 0;
-
-        sprites.clear(); // Clear the vector before adding new sprites
         //lower ground
         do {
             sf::Sprite currentSprite = sprite; // Create a copy of the sprite
@@ -354,7 +342,7 @@ public:
 
             currentSprite.setPosition(posX, posY);
             window.draw(currentSprite);
-            sprites.push_back(currentSprite);
+
 
             i++;
 
@@ -373,7 +361,6 @@ public:
 
             currentSprite.setPosition(posX, posY);
             window.draw(currentSprite);
-            sprites.push_back(currentSprite);
             i++;
 
         } while (i < numSprites);
@@ -392,7 +379,6 @@ public:
 
             currentSprite.setPosition(posX, posY);
             window.draw(currentSprite);
-            sprites.push_back(currentSprite);
             i++;
         } while (i < numSprites);
 
@@ -409,25 +395,15 @@ public:
 
             currentSprite.setPosition(posX, posY);
             window.draw(currentSprite);
-            sprites.push_back(currentSprite);
             i++;
         } while (i < numSprites);
     }
-    //----------------------------------------------------------------------------------------------
-    sf::Vector2f getPlayerPositionOnSprite(const Player& player) const {
-        for (const sf::Sprite & currentSprite : sprites) {
-            if (currentSprite.getGlobalBounds().intersects(player.getGlobalBounds())) {
-                sf::FloatRect intersection;
-                currentSprite.getGlobalBounds().intersects(player.getGlobalBounds(), intersection);
-                float posY = intersection.top - player.getGlobalBounds().height;
-                return sf::Vector2f(player.getPosition().x, posY);
-            }
-        }
-
-        // If there is no collision, return an empty position
-        return sf::Vector2f(-1.f, -1.f);
+    
+    bool isColliding(const Player& player) const {
+        // Check if the player's bounding box intersects with the map sprite's bounding box
+        return backgroundSprite.getGlobalBounds().intersects(player.getGlobalBounds());
     }
-    //---------------------------------------------------------------------------------------------
+
 };
 
 class Game
@@ -469,7 +445,14 @@ public:
         while (window.isOpen()) {
             while (player.getHealth() > 0)
             {
-               
+                // Check for collision between the map sprite and the player sprite
+                if (map.isColliding(player)) {
+                    // Collision occurred
+                    std::cout << "Collision between map and player" << std::endl;
+                    // Handle the collision as desired (e.g., reduce player health, stop player movement, etc.)
+                }
+
+
                 sf::Event event;
                 while (window.pollEvent(event)) {
                     if (event.type == sf::Event::Closed) {
@@ -481,15 +464,7 @@ public:
                 // Update game state here
                 float deltaTime = clock.restart().asSeconds();
                 player.update(deltaTime);
-                map.Update(deltaTime, player);
-                //-------------------------------------------------------------------------------for player to stand 
-                sf::Vector2f playerPosition = map.getPlayerPositionOnSprite(player);
-                if (playerPosition.x != -1.f && playerPosition.y != -1.f) {
-                    // Set the player's position to the determined position on the sprite
-                    player.setPosition(playerPosition);
-                }
-
-                //--------------------------------------------------------------------------------------------------
+                map.Update(deltaTime);
                 
                 if (enemySpawnClock.getElapsedTime() >= enemySpawnInterval) {
                     int spawnIndex = std::rand() % spawnPoints.size();
