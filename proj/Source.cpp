@@ -460,24 +460,11 @@ public:
             sprite.setPosition(1, MAX_Y - 50);
         }
 
-
-        if (backgroundTexture.loadFromFile("./background/background_color.png")) {
+        if (backgroundTexture.loadFromFile("./background/background.jpg")) {
 
             backgroundSprite.setTexture(backgroundTexture);
             backgroundSprite.setTextureRect(sf::IntRect(0, 0, MAX_X, MAX_Y));
-
-            if (backgroundTexture1.loadFromFile("./background/jungle_paralax_bg2.png")) {
-
-                backgroundTexture1.setRepeated(true); // Set the texture repeat mode to true
-
-                backgroundSprite1.setTexture(backgroundTexture1);
-                backgroundSprite1.setTextureRect(sf::IntRect(0, 0, MAX_X, MAX_Y));
-                //Set the position of the background sprite to the bottom of the window
-                backgroundSprite1.setPosition(0, MAX_Y - backgroundTexture1.getSize().y - 250);
-                backgroundSprite1.setScale(2, 2);
-            }
         }
-
 
 
         //load jungle trees 
