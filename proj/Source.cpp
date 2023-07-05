@@ -131,98 +131,6 @@ public:
     }
 };
 sf::Texture Bullet::bulletSheet;
-
-class Enemy : public Entity
-{
-private:
-    sf::Vector2f lastValidPosition;
-    static sf::Texture enemySheetIdle;
-    static sf::Texture enemySheetMove;
-    int numFrames = 4;              // Number of animation frames
-    int currentFrame = 0;           // Current frame index
-    int frameWidth = 170;           // Width of each frame in pixels
-    int frameHeight = 96;           // Height of each frame in pixels
-    float animationSpeed = 0.1f;    // Speed of the animation (adjust as needed)
-    sf::Clock animationClock;       // Clock to track the time for animation frame update
-
-public:
-    Enemy(int health, int width, int height, const sf::Vector2f& spawnPosition)
-        : Entity(health, width, height) {
-        setPosition(spawnPosition);
-        if (!enemySheetIdle.loadFromFile("./enemy_sheet_idle.png")) {
-            std::cout << "Failed to load enemy idle texture!" << std::endl;
-        }
-
-        if (!enemySheetMove.loadFromFile("./enemy_sheet_move.png")) {
-            std::cout << "Failed to load enemy move texture!" << std::endl;
-        }
-        // Define the coordinates and size of the desired part of the tile sheet
-        int tileX = 0;  // X coordinate of the tile within the tile sheet
-        int tileY = 0;  // Y coordinate of the tile within the tile sheet
-
-        // Set the texture rectangle of the sprite to display the desired part of the tile sheet
-
-        setTextureRect(sf::IntRect(tileX, tileY, 170, 102));
-
-    }
-
-    void update(float deltaTime, const std::vector<Enemy>& enemies, const sf::Vector2f& playerPosition) {
-        // Store the current position as the last valid position
-        lastValidPosition = getPosition();
-
-        // Apply gravity to the enemy
-        velocity.y += gravity;
-
-        // Calculate the direction towards the player
-        sf::Vector2f direction = playerPosition - getPosition();
-
-        // Check for collisions with other enemies
-        for (const auto& otherEnemy : enemies) {
-            if (this != &otherEnemy && isEnemyColliding(otherEnemy)) {
-                // Collision occurred with another enemy, revert to last known valid position
-                setPosition(lastValidPosition);
-                break;
-            }
-        }
-
-        // Adjust the horizontal velocity based on the direction towards the player
-        if (direction.x > 0) {
-            velocity.x = 1.0f;  // Move right
-            setTexture(enemySheetMove);  // Set the moving animation texture
-        }
-        else if (direction.x < 0) {
-            velocity.x = -1.0f; // Move left
-            setTexture(enemySheetMove);  // Set the moving animation texture
-        }
-        else {
-            velocity.x = 0.0f;  // Stop moving horizontally if player is in line
-            setTexture(enemySheetIdle);  // Set the idle animation texture
-        }
-
-        // Update the animation frame if enough time has passed
-        if (animationClock.getElapsedTime().asSeconds() >= animationSpeed) {
-            currentFrame++;  // Move to the next frame
-            if (currentFrame >= numFrames) {
-                currentFrame = 0;  // Reset to the first frame if the last frame is reached
-            }
-
-            // Calculate the x-coordinate of the current frame in the sprite sheet
-            int frameX = currentFrame * frameWidth;
-
-            // Set the texture rectangle of the sprite to display the current frame
-            setTextureRect(sf::IntRect(frameX, 0, frameWidth, frameHeight));
-
-            animationClock.restart();  // Restart the animation clock
-        }
-
-        // Update the enemy's position based on velocity
-        Entity::update(deltaTime);
-    }
-};
-sf::Texture Enemy::enemySheetIdle;
-sf::Texture Enemy::enemySheetMove;
-
-
 class Player : public Entity
 {
 private:
@@ -236,7 +144,7 @@ private:
     bool isJumping;        // Flag to track if the player is jumping
     float jumpVelocity;    // Velocity of the player during jumping
     int fireDelay;
-    std::vector<Bullet> bullets;
+    std::vector<Bullet>* bullets;
 
 
     //..........................................................................................
@@ -272,12 +180,17 @@ public:
         }
         //..........................................................................................
         int tileSize = 22;
+        bullets = new std::vector<Bullet>();
 
         // Set the initial texture and position
         setTexture(idleSpriteSheetTexture);
         setTextureRect(sf::IntRect(0, 0, frameWidth, tileSize));
         setPosition(MAX_X / 2, MAX_Y - E_H);
         setScale(E_W / 26.0f, E_H / 22.0f);
+    }
+    ~Player()
+    {
+        delete bullets;  // Deallocate the bullets vector in the destructor
     }
     void fire() {
         if (fireDelay >= 30) { // If enough time has passed since the last shot
@@ -293,14 +206,14 @@ public:
             }
 
             // Fire a bullet from the calculated position
-            bullets.push_back(Bullet(bulletPosition.x, bulletPosition.y, getScale().x));
+            bullets->push_back(Bullet(bulletPosition.x, bulletPosition.y, getScale().x));
             //std::cout << "firedelay" << std::endl;
             fireDelay = 0;
         }
     }
     void clearBullets()
     {
-        bullets.clear();
+        bullets->clear();
     }
     void respawn()
     {
@@ -369,7 +282,7 @@ public:
         fireDelay++; // Increment the fire delay
 
         // Update the bullets
-        for (auto& bullet : bullets) {
+        for (auto& bullet : *bullets) {
             bullet.update(deltaTime);
         }
 
@@ -416,10 +329,102 @@ public:
         //..........................................................................................
 
     }
-
-    std::vector<Bullet>& getBullets() { return bullets; }
+    std::vector<Bullet>& getBullets()
+    {
+        return *bullets;
+    }
 
 };
+class Enemy : public Entity
+{
+private:
+    sf::Vector2f lastValidPosition;
+    static sf::Texture enemySheetIdle;
+    static sf::Texture enemySheetMove;
+    int numFrames = 4;              // Number of animation frames
+    int currentFrame = 0;           // Current frame index
+    int frameWidth = 170;           // Width of each frame in pixels
+    int frameHeight = 96;           // Height of each frame in pixels
+    float animationSpeed = 0.1f;    // Speed of the animation (adjust as needed)
+    sf::Clock animationClock;       // Clock to track the time for animation frame update
+
+public:
+    Enemy(int health, int width, int height, const sf::Vector2f& spawnPosition)
+        : Entity(health, width, height) {
+        setPosition(spawnPosition);
+        if (!enemySheetIdle.loadFromFile("./enemy_sheet_idle.png")) {
+            std::cout << "Failed to load enemy idle texture!" << std::endl;
+        }
+
+        if (!enemySheetMove.loadFromFile("./enemy_sheet_move.png")) {
+            std::cout << "Failed to load enemy move texture!" << std::endl;
+        }
+        // Define the coordinates and size of the desired part of the tile sheet
+        int tileX = 0;  // X coordinate of the tile within the tile sheet
+        int tileY = 0;  // Y coordinate of the tile within the tile sheet
+
+        // Set the texture rectangle of the sprite to display the desired part of the tile sheet
+
+        setTextureRect(sf::IntRect(tileX, tileY, 170, 102));
+
+    }
+
+    void update(float deltaTime, const std::vector<Enemy>& enemies, const sf::Vector2f& playerPosition) {
+        // Store the current position as the last valid position
+        lastValidPosition = getPosition();
+
+        // Apply gravity to the enemy
+        velocity.y += gravity;
+
+        // Calculate the direction towards the player
+        sf::Vector2f direction = playerPosition - getPosition();
+
+        // Check for collisions with other enemies
+        for (auto it = enemies.begin(); it != enemies.end(); ++it) {
+            auto& otherEnemy = *it;
+            if (&otherEnemy != this && isEnemyColliding(otherEnemy)) {
+                // Collision occurred with another enemy, revert to last known valid position
+                setPosition(lastValidPosition);
+                break;
+            }
+        }
+
+        // Adjust the horizontal velocity based on the direction towards the player
+        if (direction.x > 0) {
+            velocity.x = 1.0f;  // Move right
+            setTexture(enemySheetMove);  // Set the moving animation texture
+        }
+        else if (direction.x < 0) {
+            velocity.x = -1.0f; // Move left
+            setTexture(enemySheetMove);  // Set the moving animation texture
+        }
+        else {
+            velocity.x = 0.0f;  // Stop moving horizontally if player is in line
+            setTexture(enemySheetIdle);  // Set the idle animation texture
+        }
+
+        // Update the animation frame if enough time has passed
+        if (animationClock.getElapsedTime().asSeconds() >= animationSpeed) {
+            currentFrame++;  // Move to the next frame
+            if (currentFrame >= numFrames) {
+                currentFrame = 0;  // Reset to the first frame if the last frame is reached
+            }
+
+            // Calculate the x-coordinate of the current frame in the sprite sheet
+            int frameX = currentFrame * frameWidth;
+
+            // Set the texture rectangle of the sprite to display the current frame
+            setTextureRect(sf::IntRect(frameX, 0, frameWidth, frameHeight));
+
+            animationClock.restart();  // Restart the animation clock
+        }
+
+        // Update the enemy's position based on velocity
+        Entity::update(deltaTime);
+    }
+};
+sf::Texture Enemy::enemySheetIdle;
+sf::Texture Enemy::enemySheetMove;
 
 class Map :public Entity
 {
