@@ -87,12 +87,14 @@ public:
     Bullet(int x, int y, float scale)
         : Entity(1, 5, 10) {
         // Bullets have 1 HP and size 5x10
-        setPosition(x, y + E_H / 2); // adding to y because the bullet spawns a bit higher than the player's gun
+        setPosition(x, y + E_H / 3); // adding to y because the bullet spawns a bit higher than the player's gun
         playerScale = scale;
-        if (!bulletSheet.loadFromFile("./player/weapon_bullet.png")) {
+        if (!bulletSheet.loadFromFile("./player/weapon_bullet_level2.png")) {
             std::cout << "balls" << std::endl;
         }
         Bullet::setTexture(bulletSheet);
+        setTextureRect(sf::IntRect(0, 0, 18, 16));
+        setScale(E_W / 18.0f / 2, E_H / 16.0f / 2);
     }
 
     void update(float deltaTime) {
