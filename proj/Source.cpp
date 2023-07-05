@@ -13,8 +13,8 @@
 
 #define STARTX 0
 #define STARTY 0
-#define MAX_X 1920
-#define MAX_Y 1080
+#define MAX_X 1024
+#define MAX_Y 768
 
 #define FPS 120
 
@@ -54,11 +54,7 @@ public:
         sf::FloatRect otherBounds = other.getGlobalBounds();
         return thisBounds.intersects(otherBounds);
     }
-    bool isEnemyColliding(const Entity& other) const {
-        sf::FloatRect thisBounds = getGlobalBounds();
-        sf::FloatRect otherBounds = other.getGlobalBounds();
-        return thisBounds.intersects(otherBounds);
-    }
+
     void update(float deltaTime) {
         sf::Vector2f position = getPosition();
 
@@ -81,24 +77,21 @@ public:
         setPosition(position);
     }
 };
-    
+
 class Bullet : public Entity
 {
 private:
-    static sf::Texture bulletSheet;
+    sf::Texture spriteSheetTexture;
     float playerScale;
 public:
     Bullet(int x, int y, float scale)
         : Entity(1, 5, 10) {
         // Bullets have 1 HP and size 5x10
-        setPosition(x, y + E_H / 3); // adding to y because the bullet spawns a bit higher than the player's gun
+        setPosition(x, y + E_H / 2); // adding to y because the bullet spawns a bit higher than the player's gun
         playerScale = scale;
-        if (!bulletSheet.loadFromFile("./player/weapon_bullet_level2.png")) {
-            std::cout << "balls" << std::endl;
-        }
-        Bullet::setTexture(bulletSheet);
-        setTextureRect(sf::IntRect(0, 0, 18, 16));
-        setScale(E_W / 18.0f / 2, E_H / 16.0f / 2);
+        if (!spriteSheetTexture.loadFromFile("./player/john_idle.png"));
+        setTexture(spriteSheetTexture);
+        setTextureRect(sf::IntRect(0, 0, 26, 22));
     }
 
     void update(float deltaTime) {
@@ -118,18 +111,16 @@ public:
         }
     }
 };
-sf::Texture Bullet::bulletSheet;
 
 class Enemy : public Entity
 {
 private:
-    sf::Vector2f lastValidPosition;
-    static sf::Texture enemySheet;
+    sf::Texture spriteSheetTexture;
 public:
     Enemy(int health, int width, int height, const sf::Vector2f& spawnPosition)
         : Entity(health, width, height) {
         setPosition(spawnPosition);
-        if (!enemySheet.loadFromFile("./player/john_idle.png"))
+        if (!spriteSheetTexture.loadFromFile("./player/john_idle.png"))
         {
             std::cout << "pic not found" << std::endl;
         }
@@ -138,47 +129,24 @@ public:
         int tileY = 0;  // Y coordinate of the tile within the tile sheet
 
         // Set the texture rectangle of the sprite to display the desired part of the tile sheet
-        setTexture(enemySheet);
+        setTexture(spriteSheetTexture);
         setTextureRect(sf::IntRect(tileX, tileY, 26, 22));
         setScale(E_W / 26.0f, E_H / 22.0f);
 
     }
 
-    void update(float deltaTime, const std::vector<Enemy>& enemies, const sf::Vector2f& playerPosition) {
+    void aiBehavior() {
+        // Implement AI behavior here
+    }
+
+    void update(float deltaTime) {
         // Apply gravity to the the enemy
+        velocity.y += gravity;
 
-        for (const auto& otherEnemy : enemies) {
-            if (isEnemyColliding(otherEnemy) && this != &otherEnemy) {
-                // Collision occurred with another enemy
-                setPosition(lastValidPosition); // Revert to the last known valid position, needs improvement i guess
-                if (isEnemyColliding(otherEnemy) && this != &otherEnemy)
-                {
-
-                }
-                std::cout << "enemys havig sex" << std::endl;
-                break; 
-            }
-            else {
-                lastValidPosition = getPosition();
-                velocity.y += gravity;
-
-            }
-        }
-        sf::Vector2f direction = playerPosition - getPosition();
-        if (direction.x > 0) {
-            velocity.x = 1.0f;  // Move right
-        }
-        else if (direction.x < 0) {
-            velocity.x = -1.0f; // Move left
-        }
-        else {
-            velocity.x = 0.0f;  // Stop moving horizontally if player is in line
-        }
         // Update the enemys's position based on velocity
         Entity::update(deltaTime);
     }
 };
-sf::Texture Enemy::enemySheet;
 
 class Player : public Entity
 {
@@ -211,6 +179,9 @@ public:
         //------------------------------------------------------------------------------------
     }
     void fire() {
+
+
+
         if (fireDelay >= 30) { // If enough time has passed since the last shot
             // Calculate the bullet's initial position based on the player's direction
             sf::Vector2f bulletPosition;
@@ -368,7 +339,7 @@ public:
         window.draw(backgroundSprite1);
 
 
-        int numSprites = MAX_X / 20; // Number of sprites to print
+        int numSprites = 20; // Number of sprites to print
         int spacing = 50; // Spacing between each sprite
         int i = 0;
 
@@ -444,7 +415,7 @@ public:
     }
     //----------------------------------------------------------------------------------------------
     sf::Vector2f getPlayerPositionOnSprite(const Player& player) const {
-        for (const sf::Sprite& currentSprite : sprites) {
+        for (const sf::Sprite & currentSprite : sprites) {
             if (currentSprite.getGlobalBounds().intersects(player.getGlobalBounds())) {
                 sf::FloatRect intersection;
                 currentSprite.getGlobalBounds().intersects(player.getGlobalBounds(), intersection);
@@ -458,6 +429,7 @@ public:
     }
     //---------------------------------------------------------------------------------------------
 };
+
 class Game
 {
 private:
@@ -468,36 +440,36 @@ private:
     std::vector<Enemy> enemies;
     std::vector<sf::Vector2f> spawnPoints;
 
+
 public:
     Game() : window(sf::VideoMode(MAX_X, MAX_Y), "SEX") {
         window.setFramerateLimit(FPS);
 
         // spawn points on the right side
         spawnPoints.push_back(sf::Vector2f(E_W, MAX_Y - E_H));   // bottom
-        spawnPoints.push_back(sf::Vector2f(E_W, MAX_Y - E_H - 200));
+        spawnPoints.push_back(sf::Vector2f(E_W, MAX_Y - E_H - 50));
 
         //spawn points on the left side
         spawnPoints.push_back(sf::Vector2f(MAX_X - E_W, MAX_Y - E_H)); // bottom
-        spawnPoints.push_back(sf::Vector2f(MAX_X - E_W, MAX_Y - E_H - 200));
+        spawnPoints.push_back(sf::Vector2f(MAX_X - E_W, MAX_Y - E_H - 50));
 
     }
 
     void run() {
         Player player;
         Map map;
+
+
         map.Load();
+        
+        
+
+
         sf::Clock clock;
         while (window.isOpen()) {
             while (player.getHealth() > 0)
             {
-                // Check for collision between the map sprite and the player sprite
-                if (map.isColliding(player)) {
-                    // Collision occurred
-                    std::cout << "Collision between map and player" << std::endl;
-                    // Handle the collision as desired (e.g., reduce player health, stop player movement, etc.)
-                }
-
-
+               
                 sf::Event event;
                 while (window.pollEvent(event)) {
                     if (event.type == sf::Event::Closed) {
@@ -518,7 +490,7 @@ public:
                 }
 
                 //--------------------------------------------------------------------------------------------------
-
+                
                 if (enemySpawnClock.getElapsedTime() >= enemySpawnInterval) {
                     int spawnIndex = std::rand() % spawnPoints.size();
                     sf::Vector2f spawnPosition = spawnPoints[spawnIndex];
@@ -529,18 +501,18 @@ public:
                 // Update enemies
                 for (auto it = enemies.begin(); it != enemies.end(); ) {
                     auto& enemy = *it;
-                    enemy.update(deltaTime, enemies, player.getPosition());
+                    enemy.update(deltaTime);
 
                     if (enemy.isColliding(player)) {
                         std::cout << "gay" << std::endl;
                         player.setHealth(player.getHealth() - 1);
                         enemy.setHealth(enemy.getHealth() - 1);
                     }
-
+                    
                     for (auto bulletIt = player.getBullets().begin(); bulletIt != player.getBullets().end(); ) {
                         auto& bullet = *bulletIt;
                         if (bullet.isColliding(enemy)) {
-                            //std::cout << "Collision with enemy" << std::endl;
+                            std::cout << "Collision with enemy" << std::endl;
                             bullet.setHealth(0);
                             enemy.setHealth(enemy.getHealth() - 1);
                         }
@@ -558,7 +530,11 @@ public:
                     else {
                         ++it;
                     }
+
+
+                    
                 }
+                
                 window.clear();
                 map.Draw(window);
                 window.draw(player);
