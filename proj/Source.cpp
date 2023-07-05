@@ -85,9 +85,9 @@ private:
     float playerScale;
 public:
     Bullet(int x, int y, float scale)
-        : Entity(1, 5, 10) { 
+        : Entity(1, 5, 10) {
         // Bullets have 1 HP and size 5x10
-        setPosition(x, y + E_H/2); // adding to y because the bullet spawns a bit higher than the player's gun
+        setPosition(x, y + E_H / 2); // adding to y because the bullet spawns a bit higher than the player's gun
         playerScale = scale;
         if (!spriteSheetTexture.loadFromFile("./player/john_idle.png"));
         setTexture(spriteSheetTexture);
@@ -98,12 +98,16 @@ public:
         sf::Vector2f position = getPosition();
 
         // Update the bullet's position based on the player's direction
-        float movementDirection = playerScale  < 0 ? -1.0f : 1.0f;  // negative/positive scale indicates which way the player is facing. 
+        float movementDirection = playerScale < 0 ? -1.0f : 1.0f;  // negative/positive scale indicates which way the player is facing. 
         position.x += BLT_SP * movementDirection * deltaTime * E_SP;
         setPosition(position);
         if (position.x < STARTX || position.x > MAX_X || position.y < STARTY || position.y > MAX_Y) {
             // Remove the bullet    
             setHealth(0);
+        }
+        if (getHealth() <= 0) {
+            // Remove the bullet
+            return;
         }
     }
 };
@@ -127,6 +131,8 @@ public:
         // Set the texture rectangle of the sprite to display the desired part of the tile sheet
         setTexture(spriteSheetTexture);
         setTextureRect(sf::IntRect(tileX, tileY, 26, 22));
+        setScale(E_W / 26.0f, E_H / 22.0f);
+
     }
 
     void aiBehavior() {
@@ -243,11 +249,6 @@ public:
         }
 
 
-        // Remove bullets that are off the screen
-        bullets.erase(std::remove_if(bullets.begin(), bullets.end(), [](const Bullet& bullet) {
-            return bullet.getHealth() == 0;
-            }), bullets.end());
-
     }
 
     std::vector<Bullet>& getBullets() { return bullets; }
@@ -271,12 +272,12 @@ public:
 
         // spawn points on the right side
         spawnPoints.push_back(sf::Vector2f(E_W, MAX_Y - E_H));   // bottom
-        spawnPoints.push_back(sf::Vector2f(E_W, MAX_Y - E_H - 50));  
+        spawnPoints.push_back(sf::Vector2f(E_W, MAX_Y - E_H - 50));
 
         //spawn points on the left side
         spawnPoints.push_back(sf::Vector2f(MAX_X - E_W, MAX_Y - E_H)); // bottom
         spawnPoints.push_back(sf::Vector2f(MAX_X - E_W, MAX_Y - E_H - 50));
-       
+
     }
 
     void run() {
@@ -284,47 +285,77 @@ public:
 
         sf::Clock clock;
         while (window.isOpen()) {
-            sf::Event event;
-            while (window.pollEvent(event)) {
-                if (event.type == sf::Event::Closed) {
-                    window.close();
+            while (player.getHealth() > 0)
+                //while (1)
+
+            { 
+                sf::Event event;
+                while (window.pollEvent(event)) {
+                    if (event.type == sf::Event::Closed) {
+                        window.close();
+                    }
+                    player.handleInput();
                 }
-                player.handleInput();
-            }
 
-            // Update game state here
-            float deltaTime = clock.restart().asSeconds();
-            player.update(deltaTime);
-            if (enemySpawnClock.getElapsedTime() >= enemySpawnInterval) {
-                int spawnIndex = std::rand() % spawnPoints.size();
-                sf::Vector2f spawnPosition = spawnPoints[spawnIndex];
-                enemies.push_back(Enemy(EN_HP, E_W, E_H, spawnPosition));
-                enemySpawnClock.restart();
-            }
-
-            // Update enemies
-            for (auto& enemy : enemies) {
-                enemy.update(deltaTime);    
-
-                if (enemy.isColliding(player)) { // self explanatory
-                    std::cout << "gay" << std::endl;
-                    player.setHealth(player.getHealth() - 1);
-                    enemy.setHealth(enemy.getHealth() - 1);
+                // Update game state here
+                float deltaTime = clock.restart().asSeconds();
+                player.update(deltaTime);
+                if (enemySpawnClock.getElapsedTime() >= enemySpawnInterval) {
+                    int spawnIndex = std::rand() % spawnPoints.size();
+                    sf::Vector2f spawnPosition = spawnPoints[spawnIndex];
+                    enemies.push_back(Enemy(EN_HP, E_W, E_H, spawnPosition));
+                    enemySpawnClock.restart();
                 }
-            }
 
-            window.clear();
-            window.draw(player);
-            for (const auto& enemy : enemies) {
-                window.draw(enemy);
+                // Update enemies
+                for (auto it = enemies.begin(); it != enemies.end(); ) {
+                    auto& enemy = *it;
+                    enemy.update(deltaTime);
+
+                    if (enemy.isColliding(player)) {
+                        std::cout << "gay" << std::endl;
+                        player.setHealth(player.getHealth() - 1);
+                        enemy.setHealth(enemy.getHealth() - 1);
+                    }
+                    for (auto bulletIt = player.getBullets().begin(); bulletIt != player.getBullets().end(); ) {
+                        auto& bullet = *bulletIt;
+                        if (bullet.isColliding(enemy)) {
+                            std::cout << "Collision with enemy" << std::endl;
+                            bullet.setHealth(0);
+                            enemy.setHealth(enemy.getHealth() - 1);
+                        }
+
+                        if (bullet.getHealth() <= 0) {
+                            bulletIt = player.getBullets().erase(bulletIt);  // Remove the bullet
+                        }
+                        else {
+                            ++bulletIt;
+                        }
+                    }
+                    if (enemy.getHealth() <= 0) {
+                        it = enemies.erase(it);  // Remove the enemy
+                    }
+                    else {
+                        ++it;
+                    }
+                }
+
+                window.clear();
+                window.draw(player);
+                for (const auto& enemy : enemies) {
+                    window.draw(enemy);
+                }
+                for (const auto& bullet : player.getBullets()) {
+                    window.draw(bullet);
+                }
+                window.display();
             }
-            for (const auto& bullet : player.getBullets()) {
-                window.draw(bullet);
+            if (player.getHealth() <1)
+            {
+                std::cout << "YOU'VE LOST" << std::endl;
             }
-            window.display();
         }
     }
-
 
 };
 
