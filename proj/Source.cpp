@@ -595,6 +595,19 @@ public:
         // If there is no collision, return an empty position
         return sf::Vector2f(-1.f, -1.f);
     }
+    sf::Vector2f getEnemyPositionOnSprite(const Enemy& enemy) const {
+        for (const sf::Sprite& currentSprite : sprites) {
+            if (currentSprite.getGlobalBounds().intersects(enemy.getGlobalBounds())) {
+                sf::FloatRect intersection;
+                currentSprite.getGlobalBounds().intersects(enemy.getGlobalBounds(), intersection);
+                float posY = intersection.top - enemy.getGlobalBounds().height;
+                return sf::Vector2f(enemy.getPosition().x, posY);
+            }
+        }
+
+        // If there is no collision, return an empty position
+        return sf::Vector2f(-1.f, -1.f);
+    }
     //---------------------------------------------------------------------------------------------
 };
 class Game
@@ -750,7 +763,10 @@ public:
                 for (auto it = enemies.begin(); it != enemies.end(); ) {
                     auto& enemy = *it;
                     enemy.update(deltaTime, enemies, player.getPosition());
-
+                    sf::Vector2f enemyPosition = map.getEnemyPositionOnSprite(enemy);
+                    if (enemyPosition.x != -1.f && enemyPosition.y != -1.f) {
+                        enemy.setPosition(enemyPosition);
+                    }
                     if (enemy.isColliding(player)) {
                         //std::cout << "gay" << std::endl;
                         player.setHealth(player.getHealth() - 1);
@@ -783,6 +799,7 @@ public:
                 map.Draw(window);
                 window.draw(player);
                 for (const auto& enemy : enemies) {
+                    
                     window.draw(enemy);
                 }
                 for (const auto& bullet : player.getBullets()) {
