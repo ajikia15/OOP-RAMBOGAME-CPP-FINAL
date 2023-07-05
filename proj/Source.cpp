@@ -3,11 +3,13 @@
 
 #define E_H 65             // ENTITY HEIGHT
 #define E_W 55             // ENTITY WIDTH
-#define E_SP 200.0f        // ENTITY SPEED
+#define E_SP 300.0f        // ENTITY SPEED
 #define BLT_SP 20.0f       // BULLET SPEED
 
 #define P_HP 5             // PLAYER STARTING HP
+
 #define EN_HP 1            // ENEMY STARTING HP 
+#define EN_SPWN  600          // ENEMY SPAWN INTERVAL (in seconds)
 
 #define STARTX 0
 #define STARTY 0
@@ -42,6 +44,16 @@ public:
 
     /* for testing only */
     sf::RectangleShape m_rectangle;
+
+    bool isColliding(const Entity& other) const {
+        if (typeid(*this) == typeid(other)) {
+            // Entities of the same type don't cause damage
+            return false;
+        }
+        sf::FloatRect thisBounds = getGlobalBounds();
+        sf::FloatRect otherBounds = other.getGlobalBounds();
+        return thisBounds.intersects(otherBounds);
+    }
 
     void update(float deltaTime) {
         sf::Vector2f position = getPosition();
@@ -101,11 +113,12 @@ class Enemy : public Entity
 private:
     sf::Texture spriteSheetTexture;
 public:
-    Enemy(int health, int width, int height)
+    Enemy(int health, int width, int height, const sf::Vector2f& spawnPosition)
         : Entity(health, width, height) {
+        setPosition(spawnPosition);
         if (!spriteSheetTexture.loadFromFile("./player/john_idle.png"))
         {
-            //error accessing sprite location
+            std::cout << "pic not found" << std::endl;
         }
         // Define the coordinates and size of the desired part of the tile sheet
         int tileX = 0;  // X coordinate of the tile within the tile sheet
@@ -245,9 +258,25 @@ public:
 
 class Game
 {
+private:
+    sf::RenderWindow window;
+    sf::Clock enemySpawnClock;
+    sf::Time enemySpawnTimer;
+    sf::Time enemySpawnInterval = sf::milliseconds(EN_SPWN);
+    std::vector<Enemy> enemies;
+    std::vector<sf::Vector2f> spawnPoints;
 public:
     Game() : window(sf::VideoMode(MAX_X, MAX_Y), "SEX") {
         window.setFramerateLimit(FPS);
+
+        // spawn points on the right side
+        spawnPoints.push_back(sf::Vector2f(E_W, MAX_Y - E_H));   // bottom
+        spawnPoints.push_back(sf::Vector2f(E_W, MAX_Y - E_H - 50));  
+
+        //spawn points on the left side
+        spawnPoints.push_back(sf::Vector2f(MAX_X - E_W, MAX_Y - E_H)); // bottom
+        spawnPoints.push_back(sf::Vector2f(MAX_X - E_W, MAX_Y - E_H - 50));
+       
     }
 
     void run() {
@@ -267,13 +296,21 @@ public:
             float deltaTime = clock.restart().asSeconds();
             player.update(deltaTime);
             if (enemySpawnClock.getElapsedTime() >= enemySpawnInterval) {
-                enemies.push_back(Enemy(EN_HP, E_W, E_H));
+                int spawnIndex = std::rand() % spawnPoints.size();
+                sf::Vector2f spawnPosition = spawnPoints[spawnIndex];
+                enemies.push_back(Enemy(EN_HP, E_W, E_H, spawnPosition));
                 enemySpawnClock.restart();
             }
 
             // Update enemies
             for (auto& enemy : enemies) {
-                enemy.update(deltaTime);
+                enemy.update(deltaTime);    
+
+                if (enemy.isColliding(player)) { // self explanatory
+                    std::cout << "gay" << std::endl;
+                    player.setHealth(player.getHealth() - 1);
+                    enemy.setHealth(enemy.getHealth() - 1);
+                }
             }
 
             window.clear();
@@ -288,12 +325,6 @@ public:
         }
     }
 
-private:
-    sf::RenderWindow window;
-    sf::Clock enemySpawnClock;
-    sf::Time enemySpawnTimer;
-    sf::Time enemySpawnInterval = sf::seconds(2);
-    std::vector<Enemy> enemies;
 
 };
 
