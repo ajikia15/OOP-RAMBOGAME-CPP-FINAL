@@ -1,12 +1,13 @@
 #include <SFML/Graphics.hpp>
 #include <SFML/Audio.hpp>
 #include <iostream>
+#include <string> 
 
 #define E_H 65             // ENTITY HEIGHT
 #define E_W 55             // ENTITY WIDTH
 #define EN_W 65
 #define E_SP 300.0f        // ENTITY SPEED
-#define BLT_SP 20.0f       // BULLET SPEED
+#define BLT_SP 10.0f       // BULLET SPEED
 #define E_VEL 1.0f         // ENTITY VELOCITY
 
 #define P_HP 5             // PLAYER STARTING HP
@@ -16,12 +17,13 @@
 
 #define STARTX 0
 #define STARTY 0
-#define MAX_X 1920
-#define MAX_Y 1080
+#define MAX_X 1440
+#define MAX_Y 860
 
 #define FPS 120
 
 #define MAINMENU 0
+#define TITLE "RAMBO"
 #define GAME 1
 #define GUIDE 2
 #define END 3
@@ -169,20 +171,11 @@ public:
         frameHeight(22), animationSpeed(0.1f), numFramesJump(6)
     {
         //..........................................................................................
-        if (!idleSpriteSheetTexture.loadFromFile("./player/john_idle.png"))
-        {
-        }
-
-        if (!moveSpriteSheetTexture.loadFromFile("./player/john_run.png"))
-        {
-        }
-        if (!jumpSpriteSheetTexture.loadFromFile("./player/john_jump.png"))
-        {
-        }
+        if (!idleSpriteSheetTexture.loadFromFile("./player/john_idle.png"));
+        if (!moveSpriteSheetTexture.loadFromFile("./player/john_run.png"));
+        if (!jumpSpriteSheetTexture.loadFromFile("./player/john_jump.png"));
         //..........................................................................................
-        if (!fire_sound.loadFromFile("./sounds/fire.ogg"))
-        {
-        }
+        if (!fire_sound.loadFromFile("./sounds/fire.ogg"));
         int tileSize = 22;
         bullets = new std::vector<Bullet>();
 
@@ -291,10 +284,6 @@ public:
         for (auto& bullet : *bullets) {
             bullet.update(deltaTime);
         }
-
-
-
-
         //..........................................................................................
         // Update the animation frame if enough time has passed
         if (animationClock.getElapsedTime().asSeconds() >= animationSpeed)
@@ -364,7 +353,7 @@ public:
 
         if (!enemySheetMove.loadFromFile("./enemy_sheet_move.png")) {
             std::cout << "Failed to load enemy move texture!" << std::endl;
-        }    
+        }
         // Define the coordinates and size of the desired part of the tile sheet
         int tileX = 0;  // X coordinate of the tile within the tile sheet
         int tileY = 0;  // Y coordinate of the tile within the tile sheet
@@ -509,12 +498,12 @@ public:
             player.setPosition(playerPosition);
         }
     }
-    
-    
-    void addJungleTree(sf::RenderWindow& window,int x,int y){
+
+
+    void addJungleTree(sf::RenderWindow& window, int x, int y) {
         sf::Vector2f treePosition1(x, y);  // Adjust the position as needed
         jungleTreeSprite.setPosition(treePosition1);
-        jungleTreeSprite.setScale(5,5);
+        jungleTreeSprite.setScale(5, 5);
         window.draw(jungleTreeSprite);
     }
 
@@ -526,19 +515,19 @@ public:
 
 
 
-        
-        
+
+
         int numSprites = 30; // Number of sprites to print
         int spacing = 50; // Spacing between each sprite
         int i = 0;
         int spacingBetweenP = 200;
         int spacingheight = 270;
         sprites.clear(); // Clear the vector before adding new sprites
-        
+
         //loop for trees 
-        do{
-            if(i==0||i==10||i==29)
-            addJungleTree(window, i * spacing, sprite.getPosition().y - spacingheight);
+        do {
+            if (i == 0 || i == 10 || i == 29)
+                addJungleTree(window, i * spacing, sprite.getPosition().y - spacingheight);
             i++;
         } while (i < numSprites);
 
@@ -556,15 +545,9 @@ public:
             currentSprite.setPosition(posX, posY);
             window.draw(currentSprite);
             sprites.push_back(currentSprite);
-            
-            
-
-
             i++;
 
         } while (i < numSprites);
-
-
         i = 0;
         numSprites = 5;
         //top left ground
@@ -582,7 +565,6 @@ public:
 
         } while (i < numSprites);
 
-
         i = 0;
         numSprites = 3;
         //middle right ground
@@ -592,7 +574,7 @@ public:
             int posX = MAX_X;
             // Adjust the position of the current sprite
             posX = posX - (i * spacing);
-            int posY = MAX_Y - spacingBetweenP-spacing;
+            int posY = MAX_Y - spacingBetweenP - spacing;
 
             currentSprite.setPosition(posX, posY);
             window.draw(currentSprite);
@@ -617,7 +599,7 @@ public:
             i++;
         } while (i < numSprites);
     }
-    
+
     sf::Vector2f getPlayerPositionOnSprite(const Player& player) const {
         for (const sf::Sprite& currentSprite : sprites) {
             if (currentSprite.getGlobalBounds().intersects(player.getGlobalBounds())) {
@@ -631,7 +613,7 @@ public:
         // If there is no collision, return an empty position
         return sf::Vector2f(-1.f, -1.f);
     }
-    
+
     sf::Vector2f getEnemyPositionOnSprite(const Enemy& enemy) const {
         for (const sf::Sprite& currentSprite : sprites) {
             if (currentSprite.getGlobalBounds().intersects(enemy.getGlobalBounds())) {
@@ -658,10 +640,12 @@ private:
     int state;
 
     sf::Text menuOptions[TEXTCOUNT];
+    sf::Text guide[7];
+    sf::Text timeToDisplay;
+
     int selectedOption;
     sf::Font titleFont;
     sf::Font mainFont;
-
 
     sf::Music mainmenutheme;
     sf::SoundBuffer death_sound;
@@ -671,32 +655,49 @@ private:
     sf::SoundBuffer damage_sound;
     sf::SoundBuffer hit_sound;
 
+    sf::Texture heart;
+    sf::Sprite heartSprite;
 public:
-    Game() : window(sf::VideoMode(MAX_X, MAX_Y), "SEX") {
+    Game() : window(sf::VideoMode(MAX_X, MAX_Y), TITLE) {
         window.setFramerateLimit(FPS);
 
         state = MAINMENU;
+        loadFiles();
+        createText();
+
+        // spawn points on the left side
+        spawnPoints.push_back(sf::Vector2f(E_W, MAX_Y - E_H));   // bottom
+        spawnPoints.push_back(sf::Vector2f(E_W * 2, MAX_Y / 2 - 100));
+
+        //spawn point on the right sid
+
+        spawnPoints.push_back(sf::Vector2f(MAX_X - E_W, MAX_Y - E_H)); // bottom
+        spawnPoints.push_back(sf::Vector2f(MAX_X - E_W, MAX_Y - 350));
+        spawnPoints.push_back(sf::Vector2f(MAX_X - E_W, MAX_Y / 2 - 300));
+
+
+    }
+    void loadFiles()
+    {
         titleFont.loadFromFile("./fonts/28 Days Later.ttf");
         mainFont.loadFromFile("./fonts/PressStart2P-Regular.ttf");
         mainmenutheme.openFromFile("./sounds/mainmenutheme.ogg");
+        heart.loadFromFile("./player/heart.png");
         death_sound.loadFromFile("./sounds/death.ogg");
         game_over_sound.loadFromFile("./sounds/game_over.ogg");
         menuselect_sound.loadFromFile("./sounds/menuselect.ogg");
         menuswitch_sound.loadFromFile("./sounds/menuswitch.ogg");
         damage_sound.loadFromFile("./sounds/damage.ogg");
         hit_sound.loadFromFile("./sounds/hit.ogg");
-        createText();
-
-        // spawn points on the left side
-        spawnPoints.push_back(sf::Vector2f(E_W, MAX_Y - E_H));   // bottom
-        spawnPoints.push_back(sf::Vector2f(E_W*2, MAX_Y /2 - 100));
-
-        //spawn points on the right side
-        spawnPoints.push_back(sf::Vector2f(MAX_X - E_W, MAX_Y - E_H)); // bottom
-        spawnPoints.push_back(sf::Vector2f(MAX_X - E_W, MAX_Y -350));
-        spawnPoints.push_back(sf::Vector2f(MAX_X - E_W, MAX_Y /2 -300 ));
-
-
+    }
+    void drawGuideText()
+    {
+        sf::Text title(TITLE, titleFont, 100);
+        title.setPosition((MAX_X - title.getGlobalBounds().width) / 2, MENUTEXTSTART - 100);
+        for (int i = 0; i < 7; i++)
+        {
+            window.draw(guide[i]);
+        }
     }
     void createText()
     {
@@ -706,15 +707,31 @@ public:
         menuOptions[2].setString("Exit");
         menuOptions[3].setString("You've Lost! Press X");
         menuOptions[4].setString("Press X");
+        guide[0].setString("Rambo's helicopter has crashed on a remote island!");
+        guide[1].setString("Try to survive as long as you can!");
+        guide[2].setString("Use Arrow Keys to move");
+        guide[3].setString("Use Spacebar to jump");
+        guide[4].setString("Click 'Z' to shoot");
+        guide[5].setString("Don't stay too long on the platforms, it's slippery!");
+        guide[6].setString("Press X");
+        timeToDisplay.setFont(mainFont);
+        timeToDisplay.setCharacterSize(50);
+        timeToDisplay.setPosition(MAX_X - 100, 10);
         for (int i = 0; i < TEXTCOUNT; i++)
         {
             menuOptions[i].setFont(mainFont);
             menuOptions[i].setCharacterSize(50);
             menuOptions[i].setPosition((MAX_X - menuOptions[i].getGlobalBounds().width) / 2, 300 + i * 100);
         }
+        for (int i = 0; i < 7; i++)
+        {
+            guide[i].setFont(mainFont);
+            guide[i].setCharacterSize(30);
+            guide[i].setPosition((MAX_X - guide[i].getGlobalBounds().width) / 2, 200 + i * 100);
+        }
     }
     void drawMainMenuText() {
-        sf::Text title("GAY RAMBO", titleFont, 100);
+        sf::Text title(TITLE, titleFont, 100);
         title.setPosition((MAX_X - title.getGlobalBounds().width) / 2, MENUTEXTSTART - 150);
         window.draw(title);
         for (int i = 0; i < MAINMENUTEXTCOUNT; i++)
@@ -745,12 +762,32 @@ public:
     {
         return state;
     }
+    void drawHealth(int health)
+    {
+        heartSprite.setTexture(heart);
+        heartSprite.setScale(1.5, 1.5);
+        for (int i = 0; i < health; i++)
+        {
+            heartSprite.setPosition(12 + i * E_W ,5);
+            window.draw(heartSprite);
+        }
+    }
+    void drawTime(const sf::Clock& clock)
+    {
+        sf::Time elapsedTime = clock.getElapsedTime();
+        std::string elapsedTimeString = std::to_string(elapsedTime.asSeconds());
+        std::cout << "time" << elapsedTimeString << std::endl;
+
+        timeToDisplay.setString(elapsedTimeString);
+        window.draw(timeToDisplay);
+    }
     void run() {
         sf::Sound sound;
         Player player;
         Map map;
         map.Load();
         sf::Clock clock;
+        sf::Clock time;
         mainmenutheme.play();
         while (window.isOpen() && getGameState() != END) {
             while (getGameState() == MAINMENU)
@@ -809,11 +846,7 @@ public:
                     // Set the player's position to the determined position on the sprite
                     player.setPosition(playerPosition);
                 }
-
                 //--------------------------------------------------------------------------------------------------
-
-
-
                 // Update enemies
                 for (auto it = enemies.begin(); it != enemies.end(); ) {
                     auto& enemy = *it;
@@ -861,7 +894,9 @@ public:
                     enemySpawnClock.restart();
                 }
                 window.clear();
+                drawTime(time);
                 map.Draw(window);
+                drawHealth(player.getHealth());
                 window.draw(player);
                 for (const auto& enemy : enemies) {
 
@@ -880,8 +915,7 @@ public:
                     break;
                 }
             }
-
-            while (getGameState() == LOST)
+            while (getGameState() == LOST || getGameState() == GUIDE)
             {
                 sf::Event event;
                 while (window.pollEvent(event)) {
@@ -890,7 +924,6 @@ public:
                     }
                     if (sf::Keyboard::isKeyPressed(sf::Keyboard::X))
                     {
-                        //std::cout << getGameState() << std::endl;
                         sound.setBuffer(menuswitch_sound);
                         sound.play();
                         setGameState(MAINMENU);
@@ -906,7 +939,7 @@ public:
                 }
                 window.clear();
                 map.Draw(window);
-                drawGameOverText();
+                getGameState() == LOST ? drawGameOverText() : drawGuideText();
                 window.display();
             }
             while (getGameState() == END)
